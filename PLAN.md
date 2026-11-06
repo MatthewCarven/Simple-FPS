@@ -40,8 +40,11 @@ instead of snagging on them, and every shot and blast shoves you about.
 - Player models are MD2. Sounds are WAV.
 - Textures are WAL. Of the 4,527 names the maps use, 4,174 are at their exact path and 4,318 turn up
   by bare name. 330 of the 363 maps have every texture at its exact path.
-- Only 239 of those names have a TGA, PNG or JPG beside them, so high-res swapping will cover far
-  less than hoped unless the pack is named differently. Check this at milestone 3.
+- The high-res pack is `content/q2textures-master/pak99_textures/textures`, laid out with the same
+  paths the maps ask for. It covers 1,469 of the 4,527 names, including every texture in `q2duel5`
+  and `q2rdm10`. 49 maps are fully covered. It also holds skies, models and icons.
+- `content/qpakman-master` is a GPL pak file tool. We read loose files, so we don't need it, and its
+  code mustn't be copied into this project.
 - WAL textures hold no colours of their own. `content/palette.act` holds the palette, taken from the
   887 PCX files that share it. Don't use `textures/new/q2.act`: it has ten colours blanked to white.
 
@@ -99,7 +102,8 @@ Each is about one session, and each ends in something you can run.
 0. **Set up.** Repo, projects, Godot in a subfolder, content moved, tests running. Done.
 1. **See a map.** Read Quake 2 maps and fly round one with textures and baked light. A test loads all
    363. Done, apart from Matthew trying the fly controls by hand.
-2. **Move.** Collision, run, jump, hop, ladders, water, wall grace, tuning panel. The big feel milestone.
+2. **Move.** Collision, run, jump, hop, ladders, water, wall grace, tuning panel. Built and tested,
+   but the feel is still Matthew's to judge by playing. Doors and lifts aren't solid until milestone 4.
 3. **Bake.** Own level format, cache, MD2 models, sounds, stand-in textures, high-res swapping.
 4. **Map objects.** Doors, lifts, buttons, teleporters, jump pads. Many maps depend on these.
 5. **Guns.** A few weapons, damage, knockback, recoil, energy round lights, pickups placed from the map's own item spots.
@@ -122,6 +126,8 @@ Each is about one session, and each ends in something you can run.
   of the test and tuning set from the start, so the game never gets shaped around them.
 - Remove textures from Quake 2's own folders (`e1u1` to `e3u3`). 1,716 of the 4,527 texture names the maps
   use point there, so community maps that use them need reskinning through the per-map file.
+- Remove those folders from `q2textures-master` too. 1,661 of its 1,828 textures are high-res remakes of
+  them. The pack's licence is permissive, but it says the images may carry licences of their own.
 - Remove characters owned by others: Homer, Marvin the Martian, Megaman, Megatron.
 - Remove sounds from the original game and other games (for example `sound/daikatana`, and monster folders
   like `sound/brain` and `sound/bosstank`).
@@ -131,7 +137,8 @@ Each is about one session, and each ends in something you can run.
 ## Open items for Matthew
 
 - Name of the game.
-- Crouch-jumping was left out. It's one setting, off by default, but some map items will be out of reach.
+- Crouch-jumping was left out. It's a checkbox on the tuning panel, off by default. In this style of
+  physics it shortens your body in mid-air to fit low openings, and doesn't lift your legs.
 - Hopping keeps speed but never gains it, so going faster than a run comes from blasts, recoil and jump
   pads. How fast recoil alone can take you gets decided once it's playable.
 - How many weapons the normal game has, compared with Destruction mode. Decide at milestone 5.

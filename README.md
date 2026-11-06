@@ -4,7 +4,7 @@ Working title. An original deathmatch shooter in Godot 4.7 and C#, with classic 
 and its own twists: you hop like you're on ice, squeeze round corners instead of snagging on them,
 and every shot and blast shoves you about. See [PLAN.md](PLAN.md).
 
-Early days. You can fly round a map, but it doesn't play yet.
+Early days. You can run and hop round a map, but there's nothing to shoot yet.
 
 ## Running it
 

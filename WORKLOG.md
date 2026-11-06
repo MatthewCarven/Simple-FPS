@@ -66,3 +66,41 @@ Reruns of the same maps showed 99-132 fps. `ringbase`, one of the biggest maps, 
 
 Not checked: the fly controls by hand, since only screenshots were taken. Sky is a flat colour. Water
 doesn't move and light styles don't flicker.
+
+## 2026-11-06: milestone 2, movement
+
+Core now has box collision against map brushes, a fixed 60 tick player move, and a small `Simulation`
+that takes one command per player per tick. The game has a player, a smoothed camera, a tuning panel
+(Tab) that saves to `user://tuning.json`, a fly mode (V) and a stand-in recoil gun on the left mouse.
+
+Written from the plan's rules: air steering only rotates velocity, so strafe-jumping can't gain speed. A
+hop's touch of the ground has no friction and charges speed for turning. Corner slide probes along the
+surface that was hit, not across the direction of travel, which is why flat walls never trigger it.
+
+Whole-collection tests found things no hand-written test would have:
+- 16 mismatches between the tree and brute force, all in `rene34`. It has six zero-thickness sheets 16,000
+  units wide. The tree lists them in only a few leaves, where they'd be invisible floors, so brushes with
+  no volume are now dropped at load.
+- Traces starting inside solid can disagree with brute force, because compilers leave brushes buried
+  inside other brushes out of the tree. Players never start there, so that's allowed.
+- 108 players ended a tick inside walls, in 527,549 ticks. Springing back from a squeeze could leave the
+  body closer than the 1/32 surface gap, and from there a slow creep gave a fraction below -1, which the
+  clipper's -1 start value read as "never entered". The start value is now negative infinity, and spring
+  back has to leave the gap.
+- A few spawn points are buried, or sit in pockets exactly 32 wide. Getting unstuck now tries a squeeze
+  first, then any direction up to 64 units.
+
+Final result: 115 tests pass. Tree against brute force is 53,100 traces on 354 maps with 0 mismatches, and
+33,588 of those hit something. Random charging round 1,381 spawns for 552,400 ticks ended in solid 0 times.
+Every spawn reached the ground. A player tick costs about 6 microseconds.
+
+Found mid-session: `content/q2textures-master` is the high-res pack, with paths matching what maps ask
+for. My earlier 239 count missed it because it had landed in a new folder.
+
+Corrected a claim made while planning: crouch-jumping here doesn't lift the legs, as told to Matthew when
+asking. It only shortens the body in mid-air.
+
+Not checked: nothing has been played by hand. Input wiring is only proven by a headless smoke test that
+drives the simulation directly, so keyboard, mouse, panel sliders and fly mode need a real try. All the
+tuning defaults are first guesses. Doors and lifts aren't solid, so some maps can't be left from where
+you spawn without V to fly out.

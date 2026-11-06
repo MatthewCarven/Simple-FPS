@@ -6,24 +6,38 @@ using System.Linq;
 using Godot;
 using SimpleFps.Core;
 using SimpleFps.Core.Bsp;
+using SimpleFps.Core.Collision;
+using SimpleFps.Core.Movement;
 using SimpleFps.Game.Player;
+using SimpleFps.Game.Ui;
 using SimpleFps.Game.World;
+using FileAccess = System.IO.File;
+using SysVector3 = System.Numerics.Vector3;
 
 namespace SimpleFps.Game;
 
 /// <summary>
-/// Entry scene. For now it shows one map from a fly camera. Game flags go after a bare "--":
-/// --map=name  --spawn=number  --shot=file.png (save a picture and quit)  --smoke-test
+/// Entry scene: one map, with you in it. Game flags go after a bare "--":
+/// --map=name  --spawn=number  --shot=file.png (save a picture and quit)  --panel (open the
+/// tuning panel in that picture)  --smoke-test
 /// </summary>
 public partial class Main : Node
 {
     private const string DefaultMap = "q2duel5";
-    private const float EyeHeight = 22f;
+    private const string TuningFile = "user://tuning.json";
     private const int FramesBeforeShot = 150;
+    private const int SmokeTestTicks = 240;
+
+    private const string Controls =
+        "WASD move, Space jump (hold to hop), Ctrl crouch, left mouse test recoil\n" +
+        "Tab tuning panel, R respawn, V fly (Q/E down/up, Shift fast), Esc frees the mouse";
 
     private static readonly Color SkyColour = new(0.33f, 0.42f, 0.55f);
 
+    private readonly TuningPanel _panel = new();
+    private readonly MoveSettings _settings = LoadSettings();
     private Label _status = null!;
+    private LocalPlayer? _player;
     private string _mapTitle = "";
 
     public override void _Ready()
@@ -32,24 +46,44 @@ public partial class Main : Node
         string engine = Engine.GetVersionInfo()["string"].AsString();
         GD.Print($"{GameInfo.Title}: Godot {engine}, {GameInfo.TickRate} ticks a second");
 
+        Engine.PhysicsTicksPerSecond = GameInfo.TickRate;
         RenderingServer.SetDefaultClearColor(SkyColour);
+
         _status = new Label { Position = new Vector2(16, 12) };
         var overlay = new CanvasLayer();
         overlay.AddChild(_status);
         AddChild(overlay);
 
-        bool loaded = TryShowMap(Flag(args, "--map=") ?? DefaultMap, Flag(args, "--spawn="));
+        _panel.Build(_settings);
+        AddChild(_panel);
+
+        bool loaded = TryShowMap(Flag(args, "--map=") ?? DefaultMap, Flag(args, "--spawn="), out Simulation? sim);
 
         if (args.Contains("--smoke-test"))
         {
-            GD.Print(loaded ? "smoke test ok" : "smoke test failed");
+            GD.Print(loaded && RunSmokeTest(sim!) ? "smoke test ok" : "smoke test failed");
             GetTree().Quit(loaded ? 0 : 1);
             return;
         }
 
         if (Flag(args, "--shot=") is { } shot)
         {
+            if (args.Contains("--panel"))
+            {
+                _panel.Toggle();
+            }
+
             SaveShot(shot);
+        }
+    }
+
+    public override void _Input(InputEvent @event)
+    {
+        // Picked up here because a focused slider would otherwise swallow Tab.
+        if (@event is InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.Tab })
+        {
+            ToggleTuning();
+            GetViewport().SetInputAsHandled();
         }
     }
 
@@ -57,15 +91,37 @@ public partial class Main : Node
     {
         if (_mapTitle.Length > 0)
         {
-            _status.Text = $"{_mapTitle}\n{Engine.GetFramesPerSecond()} fps\nClick to look, WASD fly, Q/E down/up, Shift fast, Esc frees the mouse";
+            _status.Text = $"{_mapTitle}, {Engine.GetFramesPerSecond()} fps\n{_player?.Status}\n{Controls}";
         }
     }
 
     private static string? Flag(string[] args, string prefix) =>
         args.FirstOrDefault(a => a.StartsWith(prefix, StringComparison.Ordinal))?[prefix.Length..];
 
-    private bool TryShowMap(string name, string? spawnFlag)
+    private static MoveSettings LoadSettings()
     {
+        string path = ProjectSettings.GlobalizePath(TuningFile);
+        return FileAccess.Exists(path) ? MoveSettings.FromJson(FileAccess.ReadAllText(path)) : new MoveSettings();
+    }
+
+    private void ToggleTuning()
+    {
+        _panel.Toggle();
+        if (_player is not null)
+        {
+            _player.Paused = _panel.IsOpen;
+        }
+
+        Input.MouseMode = _panel.IsOpen ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
+        if (!_panel.IsOpen)
+        {
+            FileAccess.WriteAllText(ProjectSettings.GlobalizePath(TuningFile), _settings.ToJson());
+        }
+    }
+
+    private bool TryShowMap(string name, string? spawnFlag, out Simulation? sim)
+    {
+        sim = null;
         string content = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "content"));
         string path = Path.Combine(content, "maps", name + ".bsp");
 
@@ -77,9 +133,11 @@ public partial class Main : Node
             MapView view = MapView.Build(bsp, textures);
             AddChild(view);
 
-            var camera = new FlyCamera();
-            AddChild(camera);
-            PlaceAtSpawn(camera, bsp, spawnFlag);
+            sim = new Simulation(new BspCollision(bsp), _settings);
+            (SysVector3 spawn, float yaw) = FindSpawn(bsp, spawnFlag);
+            _player = new LocalPlayer();
+            AddChild(_player);
+            _player.Begin(sim, spawn, yaw);
 
             ulong taken = Time.GetTicksMsec() - started;
             _mapTitle = name;
@@ -99,7 +157,7 @@ public partial class Main : Node
         }
     }
 
-    private static void PlaceAtSpawn(FlyCamera camera, Q2Bsp bsp, string? spawnFlag)
+    private static (SysVector3 Position, float Yaw) FindSpawn(Q2Bsp bsp, string? spawnFlag)
     {
         List<BspEntity> spawns = bsp.Entities.Where(e => e.ClassName == "info_player_deathmatch").ToList();
         if (spawns.Count == 0)
@@ -109,7 +167,7 @@ public partial class Main : Node
 
         if (spawns.Count == 0)
         {
-            return;
+            return (SysVector3.Zero, 0f);
         }
 
         int index = int.TryParse(spawnFlag, NumberStyles.Integer, CultureInfo.InvariantCulture, out int wanted)
@@ -117,11 +175,20 @@ public partial class Main : Node
             : 0;
 
         BspEntity spawn = spawns[index];
-        System.Numerics.Vector3 origin = spawn.GetVector("origin") ?? System.Numerics.Vector3.Zero;
-        origin.Z += EyeHeight;
+        return (spawn.GetVector("origin") ?? SysVector3.Zero, spawn.GetFloat("angle") ?? 0f);
+    }
 
-        // A map's angle 0 faces +X, while a Godot camera with no rotation faces -Z.
-        camera.Place(MapView.ToGodot(origin), (spawn.GetFloat("angle") ?? 0f) - 90f);
+    /// <summary>Proves input, simulation and map are joined up, with no window needed.</summary>
+    private static bool RunSmokeTest(Simulation sim)
+    {
+        for (int i = 0; i < SmokeTestTicks; i++)
+        {
+            sim.Tick([new MoveCommand(i * 0.5f, 0, 1, 0, Jump: true)]);
+        }
+
+        PlayerState s = sim.Players[0];
+        GD.Print($"after {SmokeTestTicks} ticks of hopping: speed {s.FlatSpeed:F0}, at {s.Position}");
+        return s.FlatSpeed > 1f;
     }
 
     private async void SaveShot(string path)

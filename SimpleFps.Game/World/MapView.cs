@@ -22,6 +22,8 @@ public partial class MapView : Node3D
 
     public static Vector3 ToGodot(SysVector3 p) => ToGodotDirection(p) / MapUnitsPerGodotUnit;
 
+    public static SysVector3 ToMap(Vector3 p) => new SysVector3(p.X, -p.Z, p.Y) * MapUnitsPerGodotUnit;
+
     public static MapView Build(Q2Bsp bsp, WorldTextures textures)
     {
         MapGeometry geometry = MapMesher.Build(bsp);
