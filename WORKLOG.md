@@ -102,5 +102,5 @@ asking. It only shortens the body in mid-air.
 
 Not checked: nothing has been played by hand. Input wiring is only proven by a headless smoke test that
 drives the simulation directly, so keyboard, mouse, panel sliders and fly mode need a real try. All the
-tuning defaults are first guesses. Doors and lifts aren't solid, so some maps can't be left from where
-you spawn without V to fly out.
+tuning defaults are first guesses. Doors and lifts aren't solid, so you walk straight through doors,
+and anywhere only a lift reaches needs V to fly there.
