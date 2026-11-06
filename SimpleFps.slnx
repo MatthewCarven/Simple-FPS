@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="SimpleFps.Core/SimpleFps.Core.csproj" />
+  <Project Path="SimpleFps.Core.Tests/SimpleFps.Core.Tests.csproj" />
+  <Project Path="SimpleFps.Game/SimpleFps.Game.csproj">
+    <BuildType Project="Debug" />
+  </Project>
+</Solution>

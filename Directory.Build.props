@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- Debug keeps its symbols but lets the JIT optimise. Godot's editor host only ever loads the
+       Debug build, so without this every play runs unoptimised (Overburden found this the hard
+       way). Empty counts as Debug because this file is imported before the SDK sets a default. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' or '$(Configuration)' == ''">
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+</Project>

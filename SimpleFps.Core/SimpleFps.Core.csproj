@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>SimpleFps.Core</RootNamespace>
+
+    <!-- Core must never reference Godot. It holds the simulation, so staying free of Godot is
+         what lets the same code run on a dedicated server and in tests. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SimpleFps.Core.Tests" />
+  </ItemGroup>
+
+</Project>

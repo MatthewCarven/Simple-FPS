@@ -19,4 +19,18 @@ kept. Matching on bare names would pick the wrong one.
 
 No palette for `.wal` files found yet.
 
-Nothing built. No repo yet, waiting on Matthew's `git init`.
+## 2026-11-06: milestone 0, setup
+
+Matthew ran `git init` and made the GitHub repo. Added the Core, Tests and Godot projects, laid out
+like Overburden: net8.0, Godot.NET.Sdk 4.7.1, Debug with the JIT optimising, and the Godot project in
+its own subfolder so it never tries to import the content.
+
+Checked: the solution builds with no warnings, 7 tests pass, and headless Godot imports and passes
+`--smoke-test`. `start.cmd --smoke-test` passes too, so the folder name's `=` and spaces are fine. That
+windowed run reported Forward+ on the RTX 3070 Laptop GPU.
+
+The only real code so far is `BspFormat`, which reads a map's type from its header. It's there to prove
+Core, Tests and Game connect, and milestone 1 builds on it.
+
+Not done: content hasn't moved into `content/`, because textures were still copying. Modified times
+come from the source files when copying, so they say nothing about progress. Creation times do.
