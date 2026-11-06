@@ -23,7 +23,7 @@ instead of snagging on them, and every shot and blast shoves you about.
 | Later mode | Weapons of Destruction style: huge arsenal, guided weapons, big physical blasts, gadgets and traps. Our own weapon designs. |
 | Audience | Just Matthew for now, public one day. Everything in the folder today is build placeholder, replaced before shipping. |
 
-## What's in the folder (2026-11-06, copying still in progress)
+## What's in the content folder (2026-11-06)
 
 - **364 maps: 363 Quake 2 format, 1 Quake 1** (`rene40q1.bsp`). So one loader, not several,
   and the Quake 1 map is skipped.
@@ -37,8 +37,13 @@ instead of snagging on them, and every shot and blast shoves you about.
 - Some are renamed copies (`q2pduel7` = `q2rdm2`, `q2duel1` = `q2pduel1`). The bake detects these
   by hash.
 - 25 maps have an `.override` file holding a replacement entity list. The bake should honour these.
-- Player models are MD2. Sounds are WAV. Textures are WAL so far, with the high-res pack still
-  arriving.
+- Player models are MD2. Sounds are WAV.
+- Textures are WAL. Of the 4,527 names the maps use, 4,174 are at their exact path and 4,318 turn up
+  by bare name. 330 of the 363 maps have every texture at its exact path.
+- Only 239 of those names have a TGA, PNG or JPG beside them, so high-res swapping will cover far
+  less than hoped unless the pack is named differently. Check this at milestone 3.
+- WAL textures hold no colours of their own. `content/palette.act` holds the palette, taken from the
+  887 PCX files that share it. Don't use `textures/new/q2.act`: it has ten colours blanked to white.
 
 ## How it's built
 
@@ -91,8 +96,9 @@ with any free Quake 2 map editor and compiler, so we don't need our own editor.
 
 Each is about one session, and each ends in something you can run.
 
-0. **Set up.** Repo, projects, Godot in a subfolder, content moved, tests running.
-1. **See a map.** Read Quake 2 maps and fly round one with textures and baked light. A test loads all 363.
+0. **Set up.** Repo, projects, Godot in a subfolder, content moved, tests running. Done.
+1. **See a map.** Read Quake 2 maps and fly round one with textures and baked light. A test loads all
+   363. Done, apart from Matthew trying the fly controls by hand.
 2. **Move.** Collision, run, jump, hop, ladders, water, wall grace, tuning panel. The big feel milestone.
 3. **Bake.** Own level format, cache, MD2 models, sounds, stand-in textures, high-res swapping.
 4. **Map objects.** Doors, lifts, buttons, teleporters, jump pads. Many maps depend on these.
