@@ -1,0 +1,33 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Godot (.import sidecars and .uid files are committed)
+.godot/
+mono_crash.*.json
+export_credentials.cfg
+
+# Local export output
+build/
+*.pck
+
+# IDE
+.idea/
+.vscode/
+
+# Godot editor install, if ever vendored beside the code
+Godot_v*/
+
+# Game content. All placeholder for now, not ours to redistribute, and over 2 GB.
+# Bakes are rebuilt from it, so neither belongs in the repo.
+/content/
+/cache/
+
+# The same folders at the repo root, where they land before moving into content/
+/env/
+/maps/
+/players/
+/sound/
+/textures/
