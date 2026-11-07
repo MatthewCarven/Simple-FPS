@@ -104,3 +104,9 @@ Not checked: nothing has been played by hand. Input wiring is only proven by a h
 drives the simulation directly, so keyboard, mouse, panel sliders and fly mode need a real try. All the
 tuning defaults are first guesses. Doors and lifts aren't solid, so you walk straight through doors,
 and anywhere only a lift reaches needs V to fly there.
+
+## 2026-11-08: launcher
+
+`start.cmd` is now the way in: double-click it and you land on `ringbase`, which replaced `q2duel5` as the
+default map. If the game crashes, the window stays open so the error can be read. Checked with `--smoke-test`
+launched the way Explorer does it, and with `--map=` still working. A real mouse double-click hasn't been tried.

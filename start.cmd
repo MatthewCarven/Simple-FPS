@@ -1,6 +1,7 @@
 @echo off
 setlocal
-rem Build, then launch Simple FPS in the Godot 4.7.1 mono build kept in the MinerCraft folder.
+rem Double-click to play. Builds, then launches Simple FPS in the Godot 4.7.1 mono build kept in the
+rem MinerCraft folder.
 rem Launching with --path never rebuilds, so the build has to come first.
 rem Anything passed to this script lands after the bare "--" as a game flag.
 
@@ -21,3 +22,5 @@ if errorlevel 1 (
 )
 
 "%EXE%" --path "%~dp0SimpleFps.Game" -- %*
+rem Keeps the window open after a crash, so the error can be read.
+if errorlevel 1 pause

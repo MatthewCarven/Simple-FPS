@@ -23,7 +23,7 @@ namespace SimpleFps.Game;
 /// </summary>
 public partial class Main : Node
 {
-    private const string DefaultMap = "q2duel5";
+    private const string DefaultMap = "ringbase";
     private const string TuningFile = "user://tuning.json";
     private const int FramesBeforeShot = 150;
     private const int SmokeTestTicks = 240;

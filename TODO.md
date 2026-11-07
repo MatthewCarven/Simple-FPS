@@ -1,7 +1,7 @@
 # TODO
 
 ## Next
-- [ ] Matthew: play it and tune it (`start.cmd --map=ringbase`, Tab for the panel). Keyboard and mouse
+- [ ] Matthew: play it and tune it (double-click `start.cmd`, Tab for the panel). Keyboard and mouse
       haven't been tried by hand yet, and feel can only be judged by playing.
 - [ ] Milestone 3: bake (see PLAN.md).
 

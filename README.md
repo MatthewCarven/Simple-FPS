@@ -11,8 +11,9 @@ Early days. You can run and hop round a map, but there's nothing to shoot yet.
 Needs the .NET SDK and Godot 4.7.1 mono. `start.cmd` builds and launches it, expecting Godot in
 `..\MinerCraft\Godot_v4.7.1-stable_mono_win64`.
 
-Quake 2 format maps go in `content/maps`, their textures in `content/textures`, and the 256-colour
-texture palette in `content/palette.act`. Pick a map with `start.cmd --map=name`.
+Double-click `start.cmd` to play. Quake 2 format maps go in `content/maps`, their textures in
+`content/textures`, and the 256-colour texture palette in `content/palette.act`. Pick a map with
+`start.cmd --map=name`.
 
 Tests run without Godot:
 
