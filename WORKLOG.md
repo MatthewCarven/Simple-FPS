@@ -110,3 +110,10 @@ and anywhere only a lift reaches needs V to fly there.
 `start.cmd` is now the way in: double-click it and you land on `ringbase`, which replaced `q2duel5` as the
 default map. If the game crashes, the window stays open so the error can be read. Checked with `--smoke-test`
 launched the way Explorer does it, and with `--map=` still working. A real mouse double-click hasn't been tried.
+
+## 2026-11-08: server movement settings
+
+Matthew asked about making the tuning panel a server setting, announced publicly with a picture when it
+changes. Agreed: the host alone changes it, the change applies at the next round, the game draws the
+picture from a jump run with the old and new numbers, and the server list marks changed servers. It's in
+PLAN.md and under milestone 7 in TODO.md. Nothing built yet.

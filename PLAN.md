@@ -18,6 +18,7 @@ instead of snagging on them, and every shot and blast shoves you about.
 | Air control | Almost none, like ice. To change direction you touch down. |
 | Hop landing | Turning on landing costs speed. Gentle curves stay fast, hard corners slow you down. |
 | Pushes | Every explosion shoves you. Gunfire pushes both shooter and target a little, so your own gun steers you mid-hop. |
+| Server movement | Agreed 2026-11-08. Each server owns its movement settings, and only its host (or admins they name) can change them. A change is announced to everyone at once and takes effect at the next round. The announcement carries a picture the game draws itself: a jump run with the old numbers and the new, both arcs drawn, plus the old and new values. Servers with changed movement get a badge and a one-line summary, like "low gravity, fast run", in the server list. |
 | Lighting | Cheap. Each map's own baked light, plus small moving lights on energy rounds, muzzle flashes and explosions. |
 | Textures | Maps keep their look. High-res swapped in where names match, otherwise the original or a stand-in. A per-map file can override any of it. |
 | Later mode | Weapons of Destruction style: huge arsenal, guided weapons, big physical blasts, gadgets and traps. Our own weapon designs. |
@@ -83,7 +84,9 @@ gravity 800, jump 270, step 18, body 32 wide and 56 tall. Our changes:
   hallway while firing is a real escape. This is a wanted trick, and tuning must keep it. Hits push you
   too, so a chaser's shots speed you up while their own recoil slows them. Recoil gets its own top-speed
   setting, so it can be limited without touching blasts.
-- All of these are live settings on an in-game tuning panel.
+- All of these are live settings on an in-game tuning panel. Online, the panel belongs to the server's
+  host (see Server movement above). Clients predict their own movement, so they have to run the same
+  numbers as the server, which means the server sends its settings to everyone anyway.
 
 **Weapons.** Defined in data files, not code, so a huge arsenal means adding data. Each weapon has
 damage, fire rate, knockback, recoil, and optional light. Code is only needed for each new behaviour:
@@ -109,6 +112,7 @@ Each is about one session, and each ends in something you can run.
 5. **Guns.** A few weapons, damage, knockback, recoil, energy round lights, pickups placed from the map's own item spots.
 6. **Bots.** Paths generated at bake time, then a real deathmatch. This is the first full game.
 7. **Online.** Split the server off properly, add prediction, play between the laptop and the desktop.
+   The server sends its movement settings on joining, and announces changes, which apply at the next round.
 8. **Destruction mode.** The big arsenal, guided weapons, gadgets, traps.
 9. **Ship clean.** Replace placeholders, see below.
 

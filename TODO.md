@@ -12,6 +12,14 @@
 - [ ] Skies. They're a flat colour for now. Maps name theirs with the `sky` key, and both `content/env`
       and the pack hold images.
 
+## Milestone 7
+- [ ] The server owns the movement settings and sends them to each player on joining. Only the host,
+      or admins they name, can change them.
+- [ ] Announce a change to everyone at once, and apply it at the next round.
+- [ ] Draw the announcement's picture by running a jump with the old and new settings and drawing both
+      arcs, with the old and new values under it.
+- [ ] Mark servers with changed movement in the server list: a badge and a one-line summary.
+
 ## Later
 - [ ] Moving water and lava, flowing surfaces, flickering lights and animated textures.
 - [ ] 33 maps are missing at least one texture. Most missing names are `gothic_*`, so check whether
