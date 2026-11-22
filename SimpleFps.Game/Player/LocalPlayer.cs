@@ -35,6 +35,9 @@ public partial class LocalPlayer : Node
     private float _eye = PlayerHull.StandingEye;
     private bool _flying;
 
+    // The click that grabs the mouse shouldn't also fire, so firing waits for that button to come up.
+    private bool _grabClickHeld;
+
     /// <summary>Set while the tuning panel is open, so typing there doesn't move the player.</summary>
     public bool Paused { get; set; }
 
@@ -88,6 +91,7 @@ public partial class LocalPlayer : Node
 
             case InputEventMouseButton { Pressed: true } when !Paused && Input.MouseMode != Input.MouseModeEnum.Captured:
                 Input.MouseMode = Input.MouseModeEnum.Captured;
+                _grabClickHeld = true;
                 break;
 
             case InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.Escape }:
@@ -148,6 +152,12 @@ public partial class LocalPlayer : Node
             return new MoveCommand(_yaw, _pitch, 0, 0);
         }
 
+        bool leftHeld = Input.IsMouseButtonPressed(MouseButton.Left);
+        if (!leftHeld)
+        {
+            _grabClickHeld = false;
+        }
+
         return new MoveCommand(
             _yaw,
             _pitch,
@@ -155,7 +165,7 @@ public partial class LocalPlayer : Node
             Axis(Key.D, Key.A),
             Jump: Input.IsPhysicalKeyPressed(Key.Space),
             Crouch: Input.IsPhysicalKeyPressed(Key.Ctrl) || Input.IsPhysicalKeyPressed(Key.C),
-            Attack: Input.MouseMode == Input.MouseModeEnum.Captured && Input.IsMouseButtonPressed(MouseButton.Left));
+            Attack: Input.MouseMode == Input.MouseModeEnum.Captured && leftHeld && !_grabClickHeld);
     }
 
     private void UpdateCamera(float blend)

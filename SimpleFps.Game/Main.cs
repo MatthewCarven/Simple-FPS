@@ -30,7 +30,7 @@ public partial class Main : Node
 
     private const string Controls =
         "WASD move, Space jump (hold to hop), Ctrl crouch, left mouse test recoil\n" +
-        "Tab tuning panel, R respawn, V fly (Q/E down/up, Shift fast), Esc frees the mouse";
+        "Tab tuning panel, R respawn, V fly (Q/E down/up, Shift fast), Esc frees the mouse (click to grab it again)";
 
     private static readonly Color SkyColour = new(0.33f, 0.42f, 0.55f);
 
@@ -74,6 +74,13 @@ public partial class Main : Node
             }
 
             SaveShot(shot);
+            return;
+        }
+
+        if (loaded)
+        {
+            // Grabbed from the start, so looking around works without a click first.
+            Input.MouseMode = Input.MouseModeEnum.Captured;
         }
     }
 
