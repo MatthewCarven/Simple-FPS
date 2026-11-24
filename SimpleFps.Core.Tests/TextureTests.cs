@@ -74,8 +74,9 @@ public class TextureTests
 
             var index = new TextureIndex(root);
 
-            Assert.Equal(Path.Combine(wanted, "Metal.wal"), index.Find("zzz/metal"));
-            Assert.Equal(Path.Combine(other, "metal.wal"), index.Find("aaa/METAL"));
+            // The exact path is found by asking for it, so it comes back in the map's own casing.
+            Assert.Equal(Path.Combine(wanted, "Metal.wal"), index.Find("zzz/metal"), ignoreCase: true);
+            Assert.Equal(Path.Combine(other, "metal.wal"), index.Find("aaa/METAL"), ignoreCase: true);
             Assert.NotNull(index.Find("somewhere/else/metal"));
             Assert.Null(index.Find("zzz/brick"));
         }

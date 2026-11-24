@@ -173,8 +173,23 @@ public class MapMesherTests
     }
 
     [Theory]
+    [InlineData(SurfaceFlags.Sky)]
+    [InlineData(SurfaceFlags.Sky | SurfaceFlags.NoDraw)]
+    public void SkySurfacesAreDrawnButNeverLit(SurfaceFlags flags)
+    {
+        MapGeometry geometry = Mesh(TinyBsp.Build(flags));
+        MeshBatch batch = Assert.Single(geometry.Models[0]);
+
+        Assert.Equal(flags, batch.Flags);
+        Assert.Equal(4, batch.Vertices.Count);
+        Assert.All(batch.Vertices, v =>
+            Assert.Equal(
+                (MapMesher.UnlitValue, MapMesher.UnlitValue, MapMesher.UnlitValue),
+                LightAt(geometry.Lightmap, v.LightCoord)));
+    }
+
+    [Theory]
     [InlineData(SurfaceFlags.NoDraw, "base/floor")]
-    [InlineData(SurfaceFlags.Sky, "base/floor")]
     [InlineData(SurfaceFlags.None, "e1u1/clip")]
     [InlineData(SurfaceFlags.None, "e1u1/trigger")]
     public void HiddenSurfacesAreLeftOut(SurfaceFlags flags, string texture)

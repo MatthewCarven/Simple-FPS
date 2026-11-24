@@ -79,10 +79,19 @@ public static class MapMesher
         }
     }
 
+    /// <summary>
+    /// Sky surfaces are drawn, as windows onto the sky box, even though most also carry the no-draw
+    /// flag (25,308 of the collection's 30,644 sky faces): the original game checked for sky first.
+    /// </summary>
     private static bool IsDrawn(Q2Bsp bsp, int face)
     {
         BspTexInfo info = bsp.TexInfos[bsp.Faces[face].TexInfoIndex];
-        if ((info.Flags & (SurfaceFlags.NoDraw | SurfaceFlags.Sky)) != 0)
+        if ((info.Flags & SurfaceFlags.Sky) != 0)
+        {
+            return true;
+        }
+
+        if ((info.Flags & SurfaceFlags.NoDraw) != 0)
         {
             return false;
         }
@@ -101,13 +110,13 @@ public static class MapMesher
         }
     }
 
-    /// <summary>Works out a face's lightmap size and where its data sits, or null if it has none.</summary>
+    /// <summary>Works out a face's lightmap size and where its data sits, or null if it has none. The sky is never lit.</summary>
     private static LightBlock? MeasureLight(Q2Bsp bsp, int index)
     {
         BspFace face = bsp.Faces[index];
         BspTexInfo info = bsp.TexInfos[face.TexInfoIndex];
         if (face.LightOffset < 0 || face.Style0 == NoStyle
-            || (info.Flags & (SurfaceFlags.Warp | SurfaceFlags.Trans33 | SurfaceFlags.Trans66)) != 0)
+            || (info.Flags & (SurfaceFlags.Sky | SurfaceFlags.Warp | SurfaceFlags.Trans33 | SurfaceFlags.Trans66)) != 0)
         {
             return null;
         }

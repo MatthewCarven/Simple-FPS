@@ -1,66 +1,151 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Godot;
-using SimpleFps.Core.Textures;
+using SimpleFps.Core.Bake;
 
 namespace SimpleFps.Game.World;
 
-/// <summary>Loads the textures a map asks for, using a plain checker for any that can't be found.</summary>
+/// <summary>
+/// Hands the map's textures and sky to the graphics card, from our baked files. In the high-res
+/// set, the pack's picture is used wherever it has one of the right shape, and the original
+/// everywhere else. A name with no .wal at all gets a plain checker, in either set.
+/// </summary>
 public sealed class WorldTextures
 {
     private const int StandInSize = 64;
     private const int StandInSquare = 16;
 
-    private readonly Palette _palette;
-    private readonly TextureIndex _index;
-    private readonly Dictionary<string, (Texture2D Texture, Vector2 Size)> _loaded = new();
+    private readonly TextureCache _cache;
+    private readonly Dictionary<(string, TextureSet), (Texture2D Texture, Vector2 Size)?> _walls = new();
+    private readonly Dictionary<(string, TextureSet), (Cubemap Box, string Source)?> _skies = new();
+    private readonly HashSet<string> _asked = new();
+    private readonly HashSet<string> _highRes = new();
     private readonly List<string> _missing = new();
     private (Texture2D Texture, Vector2 Size)? _standIn;
 
-    public WorldTextures(string contentRoot)
+    public WorldTextures(string contentRoot, string cacheRoot, TextureSet set)
     {
-        _palette = Palette.Load(Path.Combine(contentRoot, "palette.act"));
-        _index = new TextureIndex(Path.Combine(contentRoot, "textures"));
+        _cache = new TextureCache(contentRoot, cacheRoot);
+        Set = set;
     }
 
+    /// <summary>Which set <see cref="Get"/> and <see cref="Sky"/> hand out. Changing it takes effect on the next call.</summary>
+    public TextureSet Set { get; set; }
+
+    /// <summary>Names with no .wal, drawn as a checker.</summary>
     public IReadOnlyList<string> Missing => _missing;
 
-    public int LoadedCount => _loaded.Count;
+    /// <summary>Different names asked for so far.</summary>
+    public int LoadedCount => _asked.Count;
 
+    /// <summary>Names drawn from the high-res pack so far.</summary>
+    public int HighResCount => _highRes.Count;
+
+    /// <summary>Textures and skies that had to be baked rather than read from the cache.</summary>
+    public int BakedCount { get; private set; }
+
+    public IReadOnlyList<string> Problems => _cache.Problems;
+
+    public IReadOnlyList<string> OddShapes => _cache.OddShapes;
+
+    /// <summary>The texture for a name in the current set, and the size its texture coordinates are measured in.</summary>
     public (Texture2D Texture, Vector2 Size) Get(string name)
     {
-        if (_loaded.TryGetValue(name, out var known))
+        _asked.Add(name);
+        if (Set == TextureSet.HighRes && Load(name, TextureSet.HighRes) is { } high)
+        {
+            return high;
+        }
+
+        if (Load(name, TextureSet.Original) is { } original)
+        {
+            return original;
+        }
+
+        if (!_missing.Contains(name))
+        {
+            _missing.Add(name);
+        }
+
+        return StandIn();
+    }
+
+    /// <summary>The sky by its name in the current set, as a cube map, or null if its pictures are missing.</summary>
+    public (Cubemap Box, string Source)? Sky(string name)
+    {
+        if (Set == TextureSet.HighRes && LoadSky(name, TextureSet.HighRes) is { } high)
+        {
+            return high;
+        }
+
+        return LoadSky(name, TextureSet.Original);
+    }
+
+    private (Texture2D Texture, Vector2 Size)? Load(string name, TextureSet set)
+    {
+        if (_walls.TryGetValue((name, set), out var known))
         {
             return known;
         }
 
-        var result = Load(name);
-        _loaded[name] = result;
+        (Texture2D, Vector2)? result = null;
+        try
+        {
+            (BakedTexture? baked, bool fresh) = _cache.Wall(name, set);
+            if (baked is not null)
+            {
+                BakedImage image = baked.Images[0];
+                Image picture = Image.CreateFromData(image.Width, image.Height, image.Levels > 1, Image.Format.Rgba8, image.Rgba);
+                result = (ImageTexture.CreateFromImage(picture), new Vector2(baked.Width, baked.Height));
+                BakedCount += fresh ? 1 : 0;
+                if (set == TextureSet.HighRes)
+                {
+                    _highRes.Add(name);
+                }
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            GD.PrintErr($"Couldn't load texture {name}: {e.Message}");
+        }
+
+        _walls[(name, set)] = result;
         return result;
     }
 
-    private (Texture2D Texture, Vector2 Size) Load(string name)
+    private (Cubemap Box, string Source)? LoadSky(string name, TextureSet set)
     {
-        string? path = _index.Find(name);
-        if (path is null)
+        if (_skies.TryGetValue((name, set), out var known))
         {
-            _missing.Add(name);
-            return StandIn();
+            return known;
         }
 
+        (Cubemap, string)? result = null;
         try
         {
-            WalTexture wal = WalTexture.Load(path);
-            Image image = Image.CreateFromData(wal.Width, wal.Height, false, Image.Format.Rgba8, wal.ToRgba(_palette));
-            image.GenerateMipmaps();
-            return (ImageTexture.CreateFromImage(image), new Vector2(wal.Width, wal.Height));
+            (BakedTexture? baked, bool fresh) = _cache.Sky(name, set);
+            if (baked is not null)
+            {
+                var faces = new Godot.Collections.Array<Image>();
+                foreach (BakedImage face in baked.Images)
+                {
+                    faces.Add(Image.CreateFromData(face.Width, face.Height, false, Image.Format.Rgba8, face.Rgba));
+                }
+
+                var box = new Cubemap();
+                box.CreateFromImages(faces);
+                result = (box, baked.Source);
+                BakedCount += fresh ? 1 : 0;
+            }
         }
-        catch (InvalidDataException e)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            GD.PrintErr($"{path}: {e.Message}");
-            _missing.Add(name);
-            return StandIn();
+            GD.PrintErr($"Couldn't load sky {name}: {e.Message}");
         }
+
+        _skies[(name, set)] = result;
+        return result;
     }
 
     private (Texture2D Texture, Vector2 Size) StandIn()

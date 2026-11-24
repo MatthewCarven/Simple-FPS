@@ -16,7 +16,16 @@ public partial class MapView : Node3D
     private const float Trans33Opacity = 0.33f;
     private const float Trans66Opacity = 0.66f;
 
+    private readonly List<(ShaderMaterial Material, string Texture)> _walls = new();
+    private ShaderMaterial? _skyMaterial;
+
     public int SurfaceCount { get; private set; }
+
+    /// <summary>The sky the map asks for, and its spin.</summary>
+    public MapSky Sky { get; private set; } = null!;
+
+    /// <summary>Where the sky's pictures came from, or null if they're missing or the map shows no sky.</summary>
+    public string? SkySource { get; private set; }
 
     /// <summary>Quake 2 has Z up and Y to the left; Godot has Y up and -Z ahead.</summary>
     public static Vector3 ToGodotDirection(SysVector3 p) => new(p.X, p.Z, -p.Y);
@@ -33,7 +42,7 @@ public partial class MapView : Node3D
         ImageTexture lightmap = ImageTexture.CreateFromImage(lightImage);
 
         Dictionary<int, SysVector3> origins = ModelOrigins(map.Entities);
-        var view = new MapView();
+        var view = new MapView { Sky = MapSky.From(map.Entities) };
         for (int model = 0; model < geometry.Models.Count; model++)
         {
             var holder = new Node3D { Name = model == 0 ? "World" : $"Model{model}" };
@@ -45,12 +54,39 @@ public partial class MapView : Node3D
             view.AddChild(holder);
             foreach (MeshBatch batch in geometry.Models[model].Where(b => b.Indices.Count > 0))
             {
-                holder.AddChild(MakeSurface(batch, textures, lightmap));
+                holder.AddChild(view.MakeSurface(batch, textures, lightmap));
                 view.SurfaceCount++;
             }
         }
 
+        view.Retexture(textures);
         return view;
+    }
+
+    /// <summary>
+    /// Points every surface at the textures and sky of the set <paramref name="textures"/> is on now.
+    /// Called again when the set changes. Texture coordinates stay as they are, because a high-res
+    /// picture keeps its .wal's size.
+    /// </summary>
+    public void Retexture(WorldTextures textures)
+    {
+        foreach ((ShaderMaterial material, string texture) in _walls)
+        {
+            material.SetShaderParameter("albedo_map", textures.Get(texture).Texture);
+        }
+
+        if (_skyMaterial is null)
+        {
+            return;
+        }
+
+        (Cubemap Box, string Source)? sky = textures.Sky(Sky.Name);
+        SkySource = sky?.Source;
+        _skyMaterial.SetShaderParameter("has_box", sky is not null);
+        if (sky is { } found)
+        {
+            _skyMaterial.SetShaderParameter("sky_box", found.Box);
+        }
     }
 
     /// <summary>Doors and lifts are drawn relative to their entity's origin, when it has one.</summary>
@@ -69,9 +105,12 @@ public partial class MapView : Node3D
         return origins;
     }
 
-    private static MeshInstance3D MakeSurface(MeshBatch batch, WorldTextures textures, Texture2D lightmap)
+    private MeshInstance3D MakeSurface(MeshBatch batch, WorldTextures textures, Texture2D lightmap)
     {
-        (Texture2D albedo, Vector2 size) = textures.Get(batch.Texture);
+        bool sky = (batch.Flags & SurfaceFlags.Sky) != 0;
+
+        // The sky doesn't use texture coordinates, so its pictures needn't be loaded here.
+        Vector2 size = sky ? Vector2.One : textures.Get(batch.Texture).Size;
 
         int count = batch.Vertices.Count;
         var positions = new Vector3[count];
@@ -97,7 +136,7 @@ public partial class MapView : Node3D
 
         var mesh = new ArrayMesh();
         mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
-        mesh.SurfaceSetMaterial(0, MakeMaterial(batch.Flags, albedo, lightmap));
+        mesh.SurfaceSetMaterial(0, sky ? SkyMaterial() : WallMaterial(batch, lightmap));
 
         return new MeshInstance3D
         {
@@ -106,20 +145,36 @@ public partial class MapView : Node3D
         };
     }
 
-    private static ShaderMaterial MakeMaterial(SurfaceFlags flags, Texture2D albedo, Texture2D lightmap)
+    private ShaderMaterial WallMaterial(MeshBatch batch, Texture2D lightmap)
     {
-        bool glass = (flags & (SurfaceFlags.Trans33 | SurfaceFlags.Trans66)) != 0;
+        bool glass = (batch.Flags & (SurfaceFlags.Trans33 | SurfaceFlags.Trans66)) != 0;
         var material = new ShaderMaterial
         {
             Shader = GD.Load<Shader>(glass ? "res://World/world_glass.gdshader" : "res://World/world.gdshader"),
         };
-        material.SetShaderParameter("albedo_map", albedo);
         material.SetShaderParameter("light_map", lightmap);
         if (glass)
         {
-            material.SetShaderParameter("opacity", (flags & SurfaceFlags.Trans33) != 0 ? Trans33Opacity : Trans66Opacity);
+            material.SetShaderParameter("opacity", (batch.Flags & SurfaceFlags.Trans33) != 0 ? Trans33Opacity : Trans66Opacity);
         }
 
+        _walls.Add((material, batch.Texture));
         return material;
+    }
+
+    /// <summary>One material for every sky surface, since they all show the same box.</summary>
+    private ShaderMaterial SkyMaterial()
+    {
+        if (_skyMaterial is null)
+        {
+            _skyMaterial = new ShaderMaterial { Shader = GD.Load<Shader>("res://World/world_sky.gdshader") };
+            if (Sky.Spins)
+            {
+                _skyMaterial.SetShaderParameter("spin_axis", ToGodotDirection(SysVector3.Normalize(Sky.Axis)));
+                _skyMaterial.SetShaderParameter("spin_degrees_per_second", Sky.DegreesPerSecond);
+            }
+        }
+
+        return _skyMaterial;
     }
 }

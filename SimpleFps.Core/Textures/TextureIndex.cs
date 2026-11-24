@@ -5,33 +5,47 @@ namespace SimpleFps.Core.Textures;
 /// The exact path comes first, because hundreds of bare names exist in more than one folder. The
 /// bare name is the fallback, since the collection also holds flat folders.
 /// </summary>
-public sealed class TextureIndex
+/// <remarks>
+/// The exact path is checked on its own, so a map whose textures are all where it says (330 of
+/// the 363) never lists the folder. Listing all 31,000 .wal files took about 100 ms, most of a
+/// map's texture loading before 3b, so it only happens the first time a bare name is needed.
+/// </remarks>
+public sealed class TextureIndex(string root)
 {
     private const string Extension = ".wal";
 
-    private readonly Dictionary<string, string> _byPath = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, string> _byBareName = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, string>? _byBareName;
 
-    public TextureIndex(string root)
-    {
-        foreach (string file in Directory.EnumerateFiles(root, "*" + Extension, SearchOption.AllDirectories))
-        {
-            string relative = Path.GetRelativePath(root, file).Replace('\\', '/');
-            _byPath.TryAdd(relative[..^Extension.Length], file);
-            _byBareName.TryAdd(Path.GetFileNameWithoutExtension(file), file);
-        }
-    }
-
-    public int Count => _byPath.Count;
-
+    /// <summary>The file for a name, or null if there's none by its path or its bare name.</summary>
     public string? Find(string name)
     {
-        if (_byPath.TryGetValue(name, out string? exact))
+        if (SafePath.IsRelative(name))
         {
-            return exact;
+            string exact = Path.Combine(root, name.Replace('/', Path.DirectorySeparatorChar) + Extension);
+            if (File.Exists(exact))
+            {
+                return exact;
+            }
         }
 
-        string bare = name[(name.LastIndexOf('/') + 1)..];
-        return _byBareName.GetValueOrDefault(bare);
+        string bare = name[(name.LastIndexOfAny(['/', '\\']) + 1)..];
+        return BareNames().GetValueOrDefault(bare);
+    }
+
+    private Dictionary<string, string> BareNames()
+    {
+        if (_byBareName is null)
+        {
+            _byBareName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (Directory.Exists(root))
+            {
+                foreach (string file in Directory.EnumerateFiles(root, "*" + Extension, SearchOption.AllDirectories))
+                {
+                    _byBareName.TryAdd(Path.GetFileNameWithoutExtension(file), file);
+                }
+            }
+        }
+
+        return _byBareName;
     }
 }
