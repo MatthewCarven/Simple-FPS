@@ -23,6 +23,9 @@
 - [ ] Mark servers with changed movement in the server list: a badge and a one-line summary.
 
 ## Later
+- [ ] An options menu with invert Y (Matthew plays inverted) and mouse speed. These belong to each
+      player, so they stay out of `MoveSettings`, which the server will own. Mouse speed is fixed at
+      0.1 degrees a pixel in `LocalPlayer.cs` until then.
 - [ ] Moving water and lava, flowing surfaces, flickering lights and animated textures.
 - [ ] 33 maps are missing at least one texture. Most missing names are `gothic_*`, so check whether
       those maps came from another game's texture set.
