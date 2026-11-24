@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using SimpleFps.Core.Bake;
 using SimpleFps.Core.Bsp;
 using SysVector3 = System.Numerics.Vector3;
 
@@ -24,14 +25,14 @@ public partial class MapView : Node3D
 
     public static SysVector3 ToMap(Vector3 p) => new SysVector3(p.X, -p.Z, p.Y) * MapUnitsPerGodotUnit;
 
-    public static MapView Build(Q2Bsp bsp, WorldTextures textures)
+    public static MapView Build(BakedMap map, WorldTextures textures)
     {
-        MapGeometry geometry = MapMesher.Build(bsp);
+        MapGeometry geometry = map.Geometry;
         LightmapAtlas atlas = geometry.Lightmap;
         Image lightImage = Image.CreateFromData(atlas.Width, atlas.Height, false, Image.Format.Rgb8, atlas.Rgb);
         ImageTexture lightmap = ImageTexture.CreateFromImage(lightImage);
 
-        Dictionary<int, SysVector3> origins = ModelOrigins(bsp);
+        Dictionary<int, SysVector3> origins = ModelOrigins(map.Entities);
         var view = new MapView();
         for (int model = 0; model < geometry.Models.Count; model++)
         {
@@ -53,10 +54,10 @@ public partial class MapView : Node3D
     }
 
     /// <summary>Doors and lifts are drawn relative to their entity's origin, when it has one.</summary>
-    private static Dictionary<int, SysVector3> ModelOrigins(Q2Bsp bsp)
+    private static Dictionary<int, SysVector3> ModelOrigins(IEnumerable<BspEntity> entities)
     {
         var origins = new Dictionary<int, SysVector3>();
-        foreach (BspEntity entity in bsp.Entities)
+        foreach (BspEntity entity in entities)
         {
             string? model = entity["model"];
             if (model is ['*', ..] && int.TryParse(model[1..], out int index) && entity.GetVector("origin") is { } origin)

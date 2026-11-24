@@ -25,32 +25,23 @@ public sealed class BspCollision : ICollisionWorld
     private readonly int _root;
     private int _stamp;
 
+    /// <summary>Straight from a map file. The game uses the baked <see cref="CollisionData"/> instead.</summary>
     public BspCollision(Q2Bsp bsp)
+        : this(CollisionData.From(bsp))
     {
-        _planes = bsp.Planes;
-        _nodes = bsp.Nodes;
-        _leaves = bsp.Leaves;
-        _leafBrushes = bsp.LeafBrushes;
-        _brushes = bsp.Brushes;
-        _stamps = new int[bsp.Brushes.Length];
-        _root = bsp.Models[0].HeadNode;
+    }
 
-        _sides = new ClipPlane[bsp.BrushSides.Length];
-        for (int i = 0; i < _sides.Length; i++)
-        {
-            BspBrushSide side = bsp.BrushSides[i];
-            BspPlane plane = bsp.Planes[side.PlaneIndex];
-            SurfaceFlags surface = side.TexInfoIndex >= 0 ? bsp.TexInfos[side.TexInfoIndex].Flags : SurfaceFlags.None;
-            _sides[i] = new ClipPlane(plane.Normal, plane.Distance, surface);
-        }
-
-        _brushContents = new Contents[bsp.Brushes.Length];
-        for (int i = 0; i < _brushContents.Length; i++)
-        {
-            ref readonly BspBrush brush = ref _brushes[i];
-            bool flat = HasNoVolume(_sides.AsSpan(brush.FirstSide, brush.SideCount));
-            _brushContents[i] = flat ? Contents.None : (Contents)brush.Contents;
-        }
+    public BspCollision(CollisionData data)
+    {
+        _planes = data.Planes;
+        _nodes = data.Nodes;
+        _leaves = data.Leaves;
+        _leafBrushes = data.LeafBrushes;
+        _brushes = data.Brushes;
+        _brushContents = data.BrushContents;
+        _sides = data.Sides;
+        _stamps = new int[data.Brushes.Length];
+        _root = data.Models[0].HeadNode;
     }
 
     /// <summary>

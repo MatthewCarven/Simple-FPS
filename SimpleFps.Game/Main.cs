@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using Godot;
 using SimpleFps.Core;
+using SimpleFps.Core.Bake;
 using SimpleFps.Core.Bsp;
 using SimpleFps.Core.Collision;
 using SimpleFps.Core.Movement;
@@ -129,26 +130,30 @@ public partial class Main : Node
     private bool TryShowMap(string name, string? spawnFlag, out Simulation? sim)
     {
         sim = null;
-        string content = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "content"));
-        string path = Path.Combine(content, "maps", name + ".bsp");
+        string root = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), ".."));
+        string content = Path.Combine(root, "content");
+        var cache = new MapCache(Path.Combine(content, "maps"), Path.Combine(root, "cache", "maps"));
 
         try
         {
             ulong started = Time.GetTicksMsec();
-            Q2Bsp bsp = Q2Bsp.Load(path);
+            (BakedMap map, bool baked) = cache.Load(name);
+            ulong mapTaken = Time.GetTicksMsec() - started;
+
             var textures = new WorldTextures(content);
-            MapView view = MapView.Build(bsp, textures);
+            MapView view = MapView.Build(map, textures);
             AddChild(view);
 
-            sim = new Simulation(new BspCollision(bsp), _settings);
-            (SysVector3 spawn, float yaw) = FindSpawn(bsp, spawnFlag);
+            sim = new Simulation(new BspCollision(map.Collision), _settings);
+            (SysVector3 spawn, float yaw) = FindSpawn(map.Entities, spawnFlag);
             _player = new LocalPlayer();
             AddChild(_player);
             _player.Begin(sim, spawn, yaw);
 
             ulong taken = Time.GetTicksMsec() - started;
-            _mapTitle = name;
-            GD.Print($"map {name}: {bsp.Faces.Length} faces, {view.SurfaceCount} surfaces, {textures.LoadedCount} textures, {textures.Missing.Count} missing, {taken} ms");
+            _mapTitle = map.Info.Title is { } title ? $"{name}: {title}" : name;
+            string from = baked ? "baked" : "loaded from cache";
+            GD.Print($"map {name}: {from} in {mapTaken} ms, {view.SurfaceCount} surfaces, {textures.LoadedCount} textures, {textures.Missing.Count} missing, {taken} ms in all");
             foreach (string missing in textures.Missing)
             {
                 GD.Print($"  missing texture: {missing}");
@@ -158,18 +163,18 @@ public partial class Main : Node
         }
         catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            GD.PrintErr($"Couldn't load {path}: {e.Message}");
+            GD.PrintErr($"Couldn't load {name}: {e.Message}");
             _status.Text = $"Couldn't load {name}:\n{e.Message}";
             return false;
         }
     }
 
-    private static (SysVector3 Position, float Yaw) FindSpawn(Q2Bsp bsp, string? spawnFlag)
+    private static (SysVector3 Position, float Yaw) FindSpawn(IReadOnlyList<BspEntity> entities, string? spawnFlag)
     {
-        List<BspEntity> spawns = bsp.Entities.Where(e => e.ClassName == "info_player_deathmatch").ToList();
+        List<BspEntity> spawns = entities.Where(e => e.ClassName == "info_player_deathmatch").ToList();
         if (spawns.Count == 0)
         {
-            spawns = bsp.Entities.Where(e => e.ClassName == "info_player_start").ToList();
+            spawns = entities.Where(e => e.ClassName == "info_player_start").ToList();
         }
 
         if (spawns.Count == 0)

@@ -1,4 +1,5 @@
 using System.Numerics;
+using SimpleFps.Core.Bake;
 using SimpleFps.Core.Bsp;
 using SimpleFps.Core.Collision;
 using SimpleFps.Core.Movement;
@@ -225,6 +226,113 @@ public class WholeCollectionTests(ITestOutputHelper output)
         output.WriteLine($"{mapCount} maps, {spawnCount} spawns, {ticks:N0} ticks, {stuck} stuck, {grounded} reached the ground, {microseconds:F1} microseconds a tick");
         Assert.True(problems.Count == 0, string.Join('\n', problems.Take(12)));
         Assert.True(grounded > spawnCount * 0.95, $"Only {grounded} of {spawnCount} spawns ever stood on anything.");
+    }
+
+    [Fact]
+    public void EveryMapBakesAndReadsBackExactlyAsBuiltFromItsFiles()
+    {
+        string? maps = FindMaps();
+        if (maps is null)
+        {
+            output.WriteLine("No content folder, so nothing was checked.");
+            return;
+        }
+
+        // Only used to list and find maps. Bakes stay in memory, so nothing is written.
+        var cache = new MapCache(maps, Path.Combine(Path.GetTempPath(), "simplefps-unused"));
+        const int tracesPerMap = 40;
+        var random = new Random(2468);
+        var hull = (Mins: new Vector3(-16, -16, -24), Maxs: new Vector3(16, 16, 32));
+        var index = new MapIndex();
+        var failures = new List<string>();
+        var bakeClock = new System.Diagnostics.Stopwatch();
+        var readClock = new System.Diagnostics.Stopwatch();
+        long totalBytes = 0, largestBytes = 0;
+        int traces = 0, hits = 0, overrides = 0;
+        string largest = "";
+
+        IReadOnlyList<string> names = cache.Names();
+        foreach (string name in names)
+        {
+            try
+            {
+                MapCache.Source source = cache.Find(name);
+                byte[] file = File.ReadAllBytes(source.BspPath);
+
+                bakeClock.Start();
+                BakedMap baked = MapBaker.Bake(name, source.BspName, file, source.Override);
+                bakeClock.Stop();
+
+                using var stream = new MemoryStream();
+                BakeFile.Write(stream, baked);
+                totalBytes += stream.Length;
+                if (stream.Length > largestBytes)
+                {
+                    (largestBytes, largest) = (stream.Length, name);
+                }
+
+                stream.Position = 0;
+                readClock.Start();
+                BakedMap read = BakeFile.Read(stream, baked.Info.Hash) ?? throw new InvalidDataException("read back as stale");
+                readClock.Stop();
+
+                // Straight from the files, the way the game loaded maps before the bake.
+                Q2Bsp bsp = Q2Bsp.Read(file);
+                List<BspEntity> entities = bsp.Entities;
+                if (source.Override is not null)
+                {
+                    overrides++;
+                    entities = BspEntity.Parse(MapOverride.Read(source.Override).Entities!);
+                }
+
+                Assert.Equal(baked.Info, read.Info);
+                BakeAssert.SameGeometry(MapMesher.Build(bsp), read.Geometry);
+                BakeAssert.SameCollision(CollisionData.From(bsp), read.Collision);
+                BakeAssert.SameEntities(entities, read.Entities);
+
+                var direct = new BspCollision(bsp);
+                var fromBake = new BspCollision(read.Collision);
+                Vector3[] spots = entities
+                    .Where(e => e.ClassName.StartsWith("info_player", StringComparison.Ordinal))
+                    .Select(e => e.GetVector("origin"))
+                    .OfType<Vector3>()
+                    .DefaultIfEmpty(Vector3.Zero)
+                    .ToArray();
+                for (int i = 0; i < tracesPerMap; i++)
+                {
+                    Vector3 start = spots[random.Next(spots.Length)] + Scatter(random, 300f);
+                    Vector3 end = start + Scatter(random, 500f);
+                    bool point = i % 3 == 0;
+                    Vector3 mins = point ? Vector3.Zero : hull.Mins;
+                    Vector3 maxs = point ? Vector3.Zero : hull.Maxs;
+                    TraceResult want = direct.Trace(start, end, mins, maxs, Contents.PlayerSolid);
+                    BakeAssert.SameTrace(want, fromBake.Trace(start, end, mins, maxs, Contents.PlayerSolid), $"{start} to {end}");
+                    traces++;
+                    hits += want.Hit ? 1 : 0;
+                }
+
+                index.Add(read.Info);
+            }
+            catch (Exception e) when (e is InvalidDataException or IOException or Xunit.Sdk.XunitException or IndexOutOfRangeException)
+            {
+                failures.Add($"{name}: {e.GetType().Name}: {e.Message}");
+            }
+        }
+
+        IReadOnlyList<MapIndexEntry> entries = index.Maps;
+        List<MapIndexEntry> copies = entries.Where(m => m.DuplicateOf is not null).ToList();
+        output.WriteLine($"{names.Count} maps ({overrides} with an override), {totalBytes / 1e6:F0} MB of bakes, largest {largest} at {largestBytes / 1e6:F1} MB");
+        output.WriteLine($"baking took {bakeClock.Elapsed.TotalSeconds:F1} s, reading back {readClock.Elapsed.TotalSeconds:F1} s; {traces:N0} traces, {hits:N0} hit something");
+        output.WriteLine($"{entries.Count(m => m.Title is not null)} have a title, {entries.Count(m => m.Author is not null)} an author");
+        output.WriteLine($"{copies.Count} copies: {string.Join(", ", copies.Select(m => $"{m.Name} = {m.DuplicateOf}"))}");
+
+        Assert.True(failures.Count == 0, string.Join('\n', failures.Take(20)));
+        Assert.True(names.Count >= 363, $"Only found {names.Count} maps.");
+        Assert.True(hits > traces / 10, $"Only {hits} of {traces} traces hit anything, so this proved little.");
+        if (names.Contains("q2pduel7") && names.Contains("q2rdm2"))
+        {
+            Assert.Equal("q2pduel7", entries.Single(m => m.Name == "q2rdm2").DuplicateOf);
+        }
     }
 
     private static Vector3 Scatter(Random random, float size) => new(

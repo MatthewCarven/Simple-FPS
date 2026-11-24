@@ -13,7 +13,8 @@ Needs the .NET SDK and Godot 4.7.1 mono. `start.cmd` builds and launches it, exp
 
 Double-click `start.cmd` to play. Quake 2 format maps go in `content/maps`, their textures in
 `content/textures`, and the 256-colour texture palette in `content/palette.act`. Pick a map with
-`start.cmd --map=name`.
+`start.cmd --map=name`. The first time a map is played it's baked into `cache/maps`, and from then on
+the bake is loaded instead. Deleting `cache/` is always safe: maps just bake again.
 
 Tests run without Godot:
 

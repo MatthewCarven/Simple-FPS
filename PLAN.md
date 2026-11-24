@@ -38,6 +38,8 @@ instead of snagging on them, and every shot and blast shoves you about.
 - Some are renamed copies (`q2pduel7` = `q2rdm2`, `q2duel1` = `q2pduel1`). The bake detects these
   by hash.
 - 25 maps have an `.override` file holding a replacement entity list. The bake should honour these.
+  (Found at 3a: 13 replace a present map's entities. The other 12 name another map's `.bsp` and have
+  none of their own, so `q2dm1-nade` plays `q2dm1.bsp` with its own items, under its own name.)
 - Player models are MD2. Sounds are WAV.
 - Textures are WAL. Of the 4,527 names the maps use, 4,174 are at their exact path and 4,318 turn up
   by bare name. 330 of the 363 maps have every texture at its exact path.
@@ -96,7 +98,9 @@ instant hit, projectile, guided, homing, placed gadget, turret.
 
 **Bake.** One file per map, holding meshes, the light atlas, collision, entities and bot paths. Kept in
 `cache/`, keyed on file hash and bake version, so changing the format just re-bakes. New maps can be made
-with any free Quake 2 map editor and compiler, so we don't need our own editor.
+with any free Quake 2 map editor and compiler, so we don't need our own editor. Built at 3a: maps bake
+to `cache/maps/<name>.bake`, a list of tagged sections, so bot paths are one more section. An `index.json`
+beside them lists each map's title, author and which map it's a copy of.
 
 ## Milestones
 

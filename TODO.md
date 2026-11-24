@@ -12,10 +12,11 @@ Agreed 2026-11-24: maps and textures only, run as three sessions. 3a first, then
 run side by side.
 
 3a, map bake:
-- [ ] Bake each map to our own format in `cache/`, keyed on file hash and bake version: meshes, light
-      atlas, collision, entities, title and author. The game loads only the baked file.
-- [ ] Honour the `.override` entity files.
-- [ ] Spot renamed copies by hash (`q2pduel7` = `q2rdm2`), so the map list can hide them.
+- [x] Bake each map to our own format in `cache/`, keyed on file hash and bake version: meshes, light
+      atlas, collision, entities, title and author. The game loads only the baked file. Done 2026-11-24.
+- [x] Honour the `.override` entity files. Done, including the 12 that play another map's `.bsp` under
+      their own name.
+- [x] Spot renamed copies by hash (`q2pduel7` = `q2rdm2`), so the map list can hide them. Done: 8 found.
 
 3b, textures:
 - [ ] Bake textures to our own format.
@@ -29,6 +30,10 @@ run side by side.
 3c, map list:
 - [ ] A map list at start, with titles and authors from the bake and renamed copies hidden.
       `start.cmd --map=name` still skips it.
+- [ ] The bake's index only lists maps baked so far. `MapCache.Names()` lists every map there is, but baking
+      them all takes about 3 s and 632 MB, so the list may want a lighter pass that reads titles only.
+- [ ] Matthew: of a set of copies, the index keeps the name that sorts first, so `q2pduel7` stays and
+      `q2rdm2` is hidden. Say if another rule suits better.
 
 ## Milestone 5
 - [ ] Bake sounds (moved from milestone 3).
@@ -56,3 +61,5 @@ run side by side.
       search uses a box around the whole trace, which is fine for movement but slow across a big map.
 - [ ] Unzip or read `textures/1492.zip` and `textures/alk09.zip`.
 - [ ] Decide what to do with the stray files: `.pk`, `.sfk`, `.old`, `.bad`, `.tmp`.
+- [ ] Map bakes aren't compressed: 632 MB if every map is baked, against 389 MB of `.bsp` files. Compress
+      them if disk space starts to matter, at some cost in load time (a bake loads in about 22 ms now).

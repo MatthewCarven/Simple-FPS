@@ -171,3 +171,49 @@ tests pass. Asked Matthew about milestone 3. Agreed: it covers maps and textures
 (milestone 5) and models for bots (milestone 6), so each is built against something that uses it. Original
 textures stay smooth, a switch flips between high-res and the originals, and a map list at start replaces
 typing `--map=`. Split into three sessions in TODO.md: 3a the map bake, then 3b textures and 3c the map list.
+
+## 2026-11-24: milestone 3a, map bake
+
+Maps now load from our own baked file. The first time a map is played it's baked to
+`cache/maps/<name>.bake`, and after that the bake is loaded instead of the `.bsp`. A bake holds the
+meshes, the light atlas, the collision tree and brushes, the entities, and the title and author. It's
+keyed on a SHA-256 of the map's files and a bake version (`BakeFile.Version`, now 1), so changing either
+bakes it again. The file is a list of tagged sections, and a reader skips any it doesn't know, so bot paths
+(milestone 6) or sky surfaces (3b) are a new section plus a version bump. `index.json` beside the bakes
+lists each baked map's name, hash, source `.bsp`, title, author, and which map it's a copy of.
+
+Override files turned out to be two kinds. Each is a set of flags, a 64-byte map path, and the entity text
+with its length in front (all 25 have flags 5). 13 replace the entities of a map that's there. The other 12
+have no `.bsp` of their own and name another map's, so `q2dm1-nade` plays `q2dm1.bsp` with its own items.
+Those now load by their own name. Eleven of the 12 are edits of `q2dm1` to `q2dm7`, and the twelfth is
+`q2rdm2_jaquio`.
+
+Copies: when maps are baked from exactly the same files, the name that sorts first is kept and the others
+point to it. That finds 8: the six renamed `.bsp` pairs (`q2rdm2` = `q2pduel7`, `q2pduel1` = `q2duel1`,
+`q2pduel10` = `q2duel8`, `q2e1m1a` = `q2e1m1`, `q2ht1` = `q2ht`, `roguesedge` = `rdm14`), and two override
+variants that match another byte for byte (`q2dm1-arenaquad` = `q2dm1`, `q2dm1x` = `q2dm1-roofquad`). Which
+name to keep is my guess, and it's one line to change.
+
+Titles and authors come from the worldspawn `message`, because no map has an author key. The title is the
+first line and the author is whatever follows the first "by", after turning the game's coloured letters and
+decorations back into plain text. 330 of the 375 maps get a title and 174 an author.
+
+Load times on `ringbase`, headless, three runs each. The first load bakes in 115 to 121 ms and takes 270 to
+280 ms in all. Later loads read the bake in 22 to 23 ms and take 180 to 190 ms in all. The rest is textures
+and Godot's meshes, and 3b's texture bake should cut the textures part. The `ringbase` bake is 5.3 MB, and
+the whole collection would be 632 MB against 389 MB of `.bsp` files. The largest is `risc2` at 7.9 MB.
+Baking all 375 takes about 3 s.
+
+Checked:
+- 162 tests pass: the 120 from before unchanged, and 42 new. The build has no warnings.
+- Every map in the collection bakes, reads back, and matches what's built straight from its files to the
+  bit: meshes, light atlas, collision and entities. 15,000 traces against both agree exactly.
+- Movement is unchanged. The previous commit, built on its own, and this one end the smoke test's 240 ticks
+  of hopping at exactly the same position and speed from spawns 0, 3 and 6 on `ringbase`.
+- A changed `.bsp` or override bakes again, and so does a damaged or half-written bake. The index rebuilds
+  itself from the bakes if it's missing, damaged, or misses one.
+- `q2dm1-nade` loads by name, and the Quake 1 map still says it isn't a Quake 2 map.
+
+Not checked: nothing was played by hand or run in a window, so the times above are headless, where Godot's
+side of loading costs less. Collision still covers only the world. The doors' and lifts' brushes are in
+the bake, ready for milestone 4.
