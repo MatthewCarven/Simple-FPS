@@ -5,8 +5,8 @@ namespace SimpleFps.Core.Bake;
 
 /// <param name="DuplicateOf">
 /// Set when another map was baked from exactly the same files under another name, such as
-/// <c>q2rdm2</c> and <c>q2pduel7</c>. Of a set of copies, the name that sorts first is the one
-/// kept, and the others name it here, so a map list can leave them out.
+/// <c>q2pduel7</c> and <c>q2rdm2</c>. Of a set of copies, the shortest name is the one kept (see
+/// <see cref="MapCopies"/>), and the others name it here.
 /// </param>
 public sealed record MapIndexEntry(string Name, string Hash, string Bsp, string? Title, string? Author, string? DuplicateOf);
 
@@ -32,15 +32,10 @@ public sealed class MapIndex
     {
         get
         {
-            var kept = new Dictionary<string, string>();
-            var entries = new List<MapIndexEntry>(_maps.Count);
-            foreach (MapInfo map in _maps.Values)
-            {
-                string? original = kept.TryAdd(map.Hash, map.Name) ? null : kept[map.Hash];
-                entries.Add(new MapIndexEntry(map.Name, map.Hash, map.Bsp, map.Title, map.Author, original));
-            }
-
-            return entries;
+            Dictionary<string, string> copies = MapCopies.Find(_maps.Values.Select(m => (m.Name, m.Hash)));
+            return _maps.Values
+                .Select(m => new MapIndexEntry(m.Name, m.Hash, m.Bsp, m.Title, m.Author, copies.GetValueOrDefault(m.Name)))
+                .ToList();
         }
     }
 

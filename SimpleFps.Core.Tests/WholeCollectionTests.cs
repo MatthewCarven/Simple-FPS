@@ -331,7 +331,46 @@ public class WholeCollectionTests(ITestOutputHelper output)
         Assert.True(hits > traces / 10, $"Only {hits} of {traces} traces hit anything, so this proved little.");
         if (names.Contains("q2pduel7") && names.Contains("q2rdm2"))
         {
-            Assert.Equal("q2pduel7", entries.Single(m => m.Name == "q2rdm2").DuplicateOf);
+            Assert.Equal("q2rdm2", entries.Single(m => m.Name == "q2pduel7").DuplicateOf);
+        }
+
+        // The map list's quick read has to agree with the bake on every map.
+        IReadOnlyList<MapListEntry> listed = MapList.Read(cache).All;
+        Assert.Equal(entries.Select(m => m.Name), listed.Select(m => m.Name));
+        Assert.Equal(
+            entries.Select(m => (m.Name, m.Bsp, m.Title, m.Author, m.DuplicateOf)),
+            listed.Select(m => (m.Name, m.Bsp, m.Title, m.Author, m.CopyOf)));
+    }
+
+    [Fact]
+    public void TheMapListReadsEveryMap()
+    {
+        string? maps = FindMaps();
+        if (maps is null)
+        {
+            output.WriteLine("No content/maps folder found, so there was nothing to check.");
+            return;
+        }
+
+        var cache = new MapCache(maps, Path.Combine(Path.GetTempPath(), "simplefps-unused"));
+        MapList.Read(cache);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        MapList list = MapList.Read(cache);
+        clock.Stop();
+
+        List<MapListEntry> copies = list.All.Where(m => m.CopyOf is not null).ToList();
+        List<MapListEntry> noSpawns = list.All.Where(m => !m.Deathmatch).ToList();
+        output.WriteLine($"{list.All.Count} maps read in {clock.ElapsedMilliseconds} ms (second read), {list.Shown.Count} shown");
+        output.WriteLine($"{copies.Count} copies hidden: {string.Join(", ", copies.Select(m => $"{m.Name} = {m.CopyOf}"))}");
+        output.WriteLine($"{noSpawns.Count} without deathmatch spawns hidden: {string.Join(", ", noSpawns.Select(m => m.Name))}");
+
+        Assert.Equal(cache.Names(), list.All.Select(m => m.Name));
+        Assert.Equal(list.All.Count(m => m.Shown), list.Shown.Count);
+        Assert.All(copies, m => Assert.Null(list.All.Single(kept => kept.Name == m.CopyOf).CopyOf));
+        if (list.All.Any(m => m.Name == "q2rdm2"))
+        {
+            Assert.Contains(list.Shown, m => m.Name == "q2rdm2");
+            Assert.DoesNotContain(list.Shown, m => m.Name == "q2pduel7");
         }
     }
 

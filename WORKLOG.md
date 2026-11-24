@@ -227,3 +227,57 @@ either. It does differ from the 6 November run, because the swim cap changed it 
 
 3b and 3c will run one after the other, not side by side as planned, since they'd have to share this
 folder. 3c goes first: it's smaller, and a map list makes every later test easier to launch.
+
+## 2026-11-24: milestone 3c, map list
+
+Built in its own worktree, side by side with 3b. The game now opens on a map list unless `--map=` is
+given. Asked Matthew first, in two rounds, and he took every recommendation:
+- Titles: a quick read rather than baking all 375. The list reads each map's header and entity text,
+  where the title and author are, and hashes a map's files only when another map's are the same size,
+  to find copies (16 maps). It takes about 0.2 s for all 375 once the files are in the disk cache (150
+  to 230 ms over several runs), and about 0.5 s the first time after a build. Nothing is written.
+- Copies: the shortest name is kept, then the one that sorts first. That keeps `q2rdm2` over
+  `q2pduel7` and `q2dm1x` over `q2dm1-roofquad`. The other six are as before. The bake's index uses the
+  same rule now (`MapCopies`).
+- The 9 maps without deathmatch spawns are hidden: `q2_ctfb1` (a CTF map), `q2dm1-1`, `quad`,
+  `quadshot`, `recon`, `remains`, `risc1`, `risc2` and `robbie1`. `--map=` still loads them.
+- The original levels and their edits are listed like any other map. Keeping them out of tuning is
+  about what movement is tuned on, not what can be played.
+- Look: one list sorted by title, with the author and file name beside it, and a search box that keeps
+  the keyboard. Typing filters by title, author or file name, and every word has to match. Up, Down,
+  Page Up and Page Down move, Enter or a double-click plays, Esc clears the search. A map with no title
+  shows its file name. The sort skips punctuation in front of a title, so `'The Edge' - Modified` files
+  under T. That was my call after the first picture put three such titles at the top.
+- Esc in a map opens a menu: Resume, Map list, Quit. It replaces Esc just freeing the mouse. Esc again
+  resumes, and Esc with the tuning panel open closes the panel. The world keeps running behind the
+  menu, as it does behind the tuning panel. Only your input stops.
+
+358 maps are listed: 375, less 8 copies and 9 without spawns. The list is read afresh each time it
+opens, so a map dropped in while playing shows up on the way back, and coming back from a map
+highlights it. A map that won't load, picked from the list or named by a bad `--map=`, brings the list
+up with the error under it.
+
+`--smoke-test` and `--shot` still skip the list and play `ringbase` unless `--map` names another map.
+Two flags were added for checking without hands. `--list` opens the list anyway: the smoke test then
+picks the map from the list, goes back through the Esc menu, and picks it again before hopping, and
+`--shot` takes a picture of the list. `--menu` opens the Esc menu in a `--shot` picture. The smoke test
+now hops in a simulation of its own, built from the loaded map the same way as the player's, so frames
+that pass while the list is in use can't move its start.
+
+Checked:
+- 182 tests pass: the 162 from before, one of them changed for the new copy rule, and 20 new. The build
+  has no warnings. A whole-collection test checks the quick read agrees with the bake on every map:
+  name, `.bsp`, title, author and copy.
+- The headless smoke test on `ringbase` from spawns 0, 3 and 6 ends at exactly the same position and
+  speed as on the previous commit, built in a throwaway worktree. Through the list it ends at the same
+  spot both times, before and after going back through the Esc menu.
+- Headless: a plain launch opens the list with 358 maps. A bad `--map=` opens the list with the error,
+  and the smoke test still fails with exit 1 on it. `q2dm1-nade` plays through the list, and a hidden
+  copy (`q2pduel7`) can't be found in it.
+- Two pictures in a window, which Matthew OK'd: the list, and the Esc menu over `ringbase`. Both looked
+  right. The punctuation sort came after the pictures and is checked by a test only.
+
+Not checked: nothing was played by hand. Typing in the search box, the arrow keys, Enter, double-click
+and the menu's buttons have only been run by script or headless, and grabbing the mouse after Resume
+hasn't been tried. The read times were measured with the maps already in the disk cache, so the first
+start after a reboot will be slower.

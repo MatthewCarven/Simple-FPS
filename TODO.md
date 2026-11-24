@@ -29,12 +29,17 @@ of its own, so the game and `start.cmd` look for it and for Godot further up (06
       and the pack hold images.
 
 3c, map list:
-- [ ] A map list at start, with titles and authors from the bake and renamed copies hidden.
-      `start.cmd --map=name` still skips it.
-- [ ] The bake's index only lists maps baked so far. `MapCache.Names()` lists every map there is, but baking
-      them all takes about 3 s and 632 MB, so the list may want a lighter pass that reads titles only.
-- [ ] Matthew: of a set of copies, the index keeps the name that sorts first, so `q2pduel7` stays and
-      `q2rdm2` is hidden. Say if another rule suits better.
+- [x] A map list at start, with titles and authors from the bake and renamed copies hidden.
+      `start.cmd --map=name` still skips it. Done 2026-11-24: one list sorted by title, a search box,
+      Enter or double-click to play, and an Esc menu in a map (Resume, Map list, Quit). Maps without
+      deathmatch spawns are hidden too.
+- [x] The bake's index only lists maps baked so far. Done: Matthew chose a quick read over baking
+      everything. The list reads each map's title straight from the map, about 0.2 s for all 375.
+- [x] Matthew: of a set of copies, which name is kept. Done: the shortest, then the one that sorts
+      first (Matthew, 2026-11-24), so `q2rdm2` stays and `q2pduel7` is hidden. The index uses the
+      same rule.
+- [ ] Matthew: try the map list by hand. Search, arrows, Enter, double-click, and Esc then "Map list"
+      have only been run headless or by script, and the list's look only seen in one picture.
 
 ## Milestone 5
 - [ ] Bake sounds (moved from milestone 3).

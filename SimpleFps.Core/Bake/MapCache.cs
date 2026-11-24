@@ -25,7 +25,13 @@ public sealed class MapCache(string mapsFolder, string cacheFolder)
     /// Every Quake 2 map that can be loaded by name, sorted: one per .bsp, plus one per override
     /// file that names another map's .bsp.
     /// </summary>
-    public IReadOnlyList<string> Names()
+    public IReadOnlyList<string> Names() => Candidates().Where(IsQuake2).ToList();
+
+    /// <summary>
+    /// Every name that has a .bsp or an override file, sorted, before checking that it's a Quake 2
+    /// map, so <see cref="MapList"/> can check that while it reads the map's entities.
+    /// </summary>
+    internal IReadOnlyCollection<string> Candidates()
     {
         var names = new SortedSet<string>(StringComparer.Ordinal);
         foreach (string file in Directory.EnumerateFiles(mapsFolder))
@@ -41,7 +47,7 @@ public sealed class MapCache(string mapsFolder, string cacheFolder)
             }
         }
 
-        return names.Where(IsQuake2).ToList();
+        return names;
     }
 
     /// <summary>Loads a map, baking it first if there's no current bake. Baked is true if it had to bake.</summary>

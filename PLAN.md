@@ -100,7 +100,9 @@ instant hit, projectile, guided, homing, placed gadget, turret.
 `cache/`, keyed on file hash and bake version, so changing the format just re-bakes. New maps can be made
 with any free Quake 2 map editor and compiler, so we don't need our own editor. Built at 3a: maps bake
 to `cache/maps/<name>.bake`, a list of tagged sections, so bot paths are one more section. An `index.json`
-beside them lists each map's title, author and which map it's a copy of.
+beside them lists each map's title, author and which map it's a copy of. The map list at start (3c)
+doesn't wait for bakes: it reads every map's title straight from the map in about 0.2 s, and hides
+copies (keeping the shortest name) and maps without deathmatch spawns.
 
 ## Milestones
 

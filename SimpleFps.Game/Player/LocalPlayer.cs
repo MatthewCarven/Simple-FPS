@@ -38,7 +38,10 @@ public partial class LocalPlayer : Node
     // The click that grabs the mouse shouldn't also fire, so firing waits for that button to come up.
     private bool _grabClickHeld;
 
-    /// <summary>Set while the tuning panel is open, so typing there doesn't move the player.</summary>
+    /// <summary>
+    /// Set while the tuning panel or the Esc menu is open, so typing or clicking there doesn't move
+    /// the player. Esc itself belongs to <see cref="Main"/>.
+    /// </summary>
     public bool Paused { get; set; }
 
     private PlayerState Current => _after;
@@ -92,10 +95,6 @@ public partial class LocalPlayer : Node
             case InputEventMouseButton { Pressed: true } when !Paused && Input.MouseMode != Input.MouseModeEnum.Captured:
                 Input.MouseMode = Input.MouseModeEnum.Captured;
                 _grabClickHeld = true;
-                break;
-
-            case InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.Escape }:
-                Input.MouseMode = Input.MouseModeEnum.Visible;
                 break;
 
             case InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.R }:
