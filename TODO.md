@@ -8,8 +8,9 @@
 - [ ] Milestone 3: bake (see PLAN.md).
 
 ## Milestone 3
-Agreed 2026-11-24: maps and textures only, run as three sessions. 3a first, then 3b and 3c, which can
-run side by side.
+Agreed 2026-11-24: maps and textures only, run as three sessions. 3a first, then 3c and 3b one after the
+other. They can't run side by side: a worktree has no `content/` (it's git-ignored), and in a shared
+folder one session's half-finished edit breaks the other's build.
 
 3a, map bake:
 - [x] Bake each map to our own format in `cache/`, keyed on file hash and bake version: meshes, light

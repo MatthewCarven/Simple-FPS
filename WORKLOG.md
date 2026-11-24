@@ -217,3 +217,13 @@ Checked:
 Not checked: nothing was played by hand or run in a window, so the times above are headless, where Godot's
 side of loading costs less. Collision still covers only the world. The doors' and lifts' brushes are in
 the bake, ready for milestone 4.
+
+## 2026-11-24: 3a checked
+
+Checked 3a from the planning session: 162 tests pass, the build has no warnings, and a headless smoke test
+on `q2duel5` (not baked before) baked it and passed. The smoke test ends at exactly the same position and
+speed on the commit before 3a, run in a throwaway worktree, so the bake didn't change movement on that map
+either. It does differ from the 6 November run, because the swim cap changed it in between.
+
+3b and 3c will run one after the other, not side by side as planned, since they'd have to share this
+folder. 3c goes first: it's smaller, and a map list makes every later test easier to launch.
