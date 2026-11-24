@@ -153,3 +153,8 @@ Swimming now can't build flat speed past a normal swim (150). Speed brought in f
 is kept, and the liquid slows it. The bobbing test covers water, lava and slime at four angles, and it reached
 301 before the fix. Climbing out onto a ledge still works. 120 tests pass, the build has no warnings, and the
 headless smoke test passes. The change hasn't been played by hand yet.
+
+On `rexro` he squeezed between wooden walls and sent a picture showing the full 4 units of squeeze holding
+while he stood in the gap. So squeeze works by hand, at amount 4 and speed 60. Ladders work too: he climbed the one behind spawn 2.
+
+Still not confirmed by hand: crouch, R respawn, V fly, a slider change taking effect live, and the swim cap.
