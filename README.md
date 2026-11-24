@@ -11,10 +11,15 @@ Early days. You can run and hop round a map, but there's nothing to shoot yet.
 Needs the .NET SDK and Godot 4.7.1 mono. `start.cmd` builds and launches it, expecting Godot in
 `..\MinerCraft\Godot_v4.7.1-stable_mono_win64`.
 
-Double-click `start.cmd` to play. Quake 2 format maps go in `content/maps`, their textures in
-`content/textures`, and the 256-colour texture palette in `content/palette.act`. Pick a map with
-`start.cmd --map=name`. The first time a map is played it's baked into `cache/maps`, and from then on
-the bake is loaded instead. Deleting `cache/` is always safe: maps just bake again.
+Double-click `start.cmd` to play. It opens on a list of maps: type to search, Enter or double-click
+to play, and Esc in a map for a menu that goes back to the list. `start.cmd --map=name` skips the
+list. Quake 2 format maps go in `content/maps`, their textures in `content/textures`, and the
+256-colour texture palette in `content/palette.act`. The first time a map is played it's baked into
+`cache/maps`, and from then on the bake is loaded instead. Textures and skies bake the same way, into
+`cache/textures` and `cache/skies`. Deleting `cache/` is always safe: everything just bakes again.
+
+High-res textures from `content/q2textures-master` are used wherever they match a map's texture, and
+T flips between them and the originals. Skies come from `content/env`.
 
 Tests run without Godot:
 

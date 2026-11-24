@@ -80,6 +80,40 @@ public sealed class Q2Bsp
         };
     }
 
+    /// <summary>
+    /// Reads only the entity list, for when the rest of the map isn't needed, such as listing every
+    /// map's title. Reads the header and the entity text and nothing else.
+    /// </summary>
+    /// <exception cref="InvalidDataException">The data isn't a readable Quake 2 map.</exception>
+    public static List<BspEntity> ReadEntities(Stream stream)
+    {
+        Span<byte> header = stackalloc byte[HeaderSize + LumpCount * LumpEntrySize];
+        int got = stream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
+        BspKind kind = BspFormat.Identify(header[..got]);
+        if (kind != BspKind.Quake2)
+        {
+            throw new InvalidDataException($"Not a Quake 2 map (looks like {kind}).");
+        }
+
+        if (got < header.Length)
+        {
+            throw new InvalidDataException("File is too short to hold a map header.");
+        }
+
+        ReadOnlySpan<byte> entry = header.Slice(HeaderSize + LumpEntities * LumpEntrySize, LumpEntrySize);
+        int offset = BinaryPrimitives.ReadInt32LittleEndian(entry);
+        int length = BinaryPrimitives.ReadInt32LittleEndian(entry[4..]);
+        if (offset < 0 || length < 0 || offset > stream.Length - length)
+        {
+            throw new InvalidDataException($"Lump {LumpEntities} runs outside the file.");
+        }
+
+        byte[] text = new byte[length];
+        stream.Position = offset;
+        stream.ReadExactly(text);
+        return BspEntity.Parse(Encoding.Latin1.GetString(text));
+    }
+
     private static ReadOnlySpan<byte> LumpBytes(byte[] data, int lump)
     {
         ReadOnlySpan<byte> entry = data.AsSpan(HeaderSize + lump * LumpEntrySize, LumpEntrySize);

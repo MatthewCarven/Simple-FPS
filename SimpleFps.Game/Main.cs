@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 using SimpleFps.Core;
 using SimpleFps.Core.Bake;
@@ -18,10 +19,15 @@ using SysVector3 = System.Numerics.Vector3;
 namespace SimpleFps.Game;
 
 /// <summary>
-/// Entry scene: one map, with you in it. Game flags go after a bare "--":
-/// --map=name  --spawn=number  --shot=file.png (save a picture and quit)  --panel (open the
-/// tuning panel in that picture)  --textures=original|highres (for this run only, not saved)
-/// --pitch=degrees (start looking down, or up if negative)  --smoke-test
+/// Entry scene: the map list, then a map with you in it. Game flags go after a bare "--":
+/// --map=name (skip the list and play it)  --spawn=number  --smoke-test  --shot=file.png (save a
+/// picture and quit)  --panel (open the tuning panel in that picture)  --menu (open the Esc menu in
+/// that picture)  --list (open the map list even with --smoke-test or --shot)
+/// --textures=original|highres (for this run only, not saved)  --pitch=degrees (start looking down,
+/// or up if negative).
+/// The smoke test and --shot skip the list and play ringbase, unless --map names another map. With
+/// --list, --shot takes a picture of the list, and the smoke test picks the map from the list, goes
+/// back to the list through the Esc menu, and picks it again before hopping.
 /// </summary>
 public partial class Main : Node
 {
@@ -33,19 +39,30 @@ public partial class Main : Node
 
     private const string Controls =
         "WASD move, Space jump (hold to hop), Ctrl crouch, left mouse test recoil\n" +
-        "Tab tuning panel, R respawn, V fly (Q/E down/up, Shift fast), Esc frees the mouse (click to grab it again)\n" +
+        "Tab tuning panel, R respawn, V fly (Q/E down/up, Shift fast), Esc menu (Resume, Map list, Quit)\n" +
         "T flips between high-res and original textures";
 
     private static readonly Color SkyColour = new(0.33f, 0.42f, 0.55f);
 
     private readonly TuningPanel _panel = new();
+    private readonly MapMenu _menu = new();
+    private readonly PauseMenu _pause = new();
     private readonly MoveSettings _settings = LoadSettings();
     private readonly PlayerOptions _options = LoadOptions();
     private Label _status = null!;
-    private LocalPlayer? _player;
-    private WorldTextures? _textures;
+    private MapCache _cache = null!;
+    private string _content = "";
+    private string _cacheFolder = "";
+    private TextureSet _textureSet;
+
     private MapView? _view;
+    private WorldTextures? _textures;
+    private LocalPlayer? _player;
+    private BakedMap? _map;
+    private SysVector3 _spawn;
     private string _mapTitle = "";
+    private string? _lastMap;
+    private Task<bool> _loading = Task.FromResult(false);
 
     public override void _Ready()
     {
@@ -61,70 +78,139 @@ public partial class Main : Node
         overlay.AddChild(_status);
         AddChild(overlay);
 
-        _panel.Build(_settings);
-        AddChild(_panel);
-
-        TextureSet textureSet = Flag(args, "--textures=") switch
+        string root = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), ".."));
+        _content = FindContent(root);
+        _cacheFolder = Path.Combine(root, "cache");
+        _cache = new MapCache(Path.Combine(_content, "maps"), Path.Combine(_cacheFolder, "maps"));
+        _textureSet = Flag(args, "--textures=") switch
         {
             "original" => TextureSet.Original,
             "highres" => TextureSet.HighRes,
             _ => _options.HighResTextures ? TextureSet.HighRes : TextureSet.Original,
         };
 
-        bool loaded = TryShowMap(Flag(args, "--map=") ?? DefaultMap, Flag(args, "--spawn="), textureSet, out Simulation? sim);
+        _panel.Build(_settings);
+        AddChild(_panel);
 
-        if (args.Contains("--smoke-test"))
+        _menu.Build();
+        _menu.MapChosen += name =>
         {
-            if (loaded)
+            if (_loading.IsCompleted)
+            {
+                _loading = PlayFromList(name);
+            }
+        };
+        AddChild(_menu);
+
+        _pause.Build();
+        _pause.ResumeChosen += Resume;
+        _pause.MapListChosen += BackToList;
+        _pause.QuitChosen += () => GetTree().Quit();
+        AddChild(_pause);
+
+        string? mapFlag = Flag(args, "--map=");
+        string? shot = Flag(args, "--shot=");
+        bool smokeTest = args.Contains("--smoke-test");
+
+        if (args.Contains("--list") || (mapFlag is null && shot is null && !smokeTest))
+        {
+            OpenMapList();
+            if (smokeTest)
+            {
+                RunListSmokeTest(mapFlag ?? DefaultMap);
+            }
+            else if (shot is not null)
+            {
+                SaveShot(shot);
+            }
+
+            return;
+        }
+
+        string? error = ShowMap(mapFlag ?? DefaultMap, Flag(args, "--spawn="));
+
+        if (smokeTest)
+        {
+            if (error is null)
             {
                 // Both ways, so the second flip times the set that's already loaded.
                 FlipTextures(save: false);
                 FlipTextures(save: false);
             }
 
-            GD.Print(loaded && RunSmokeTest(sim!) ? "smoke test ok" : "smoke test failed");
-            GetTree().Quit(loaded ? 0 : 1);
+            GD.Print(error is null && RunSmokeTest() ? "smoke test ok" : "smoke test failed");
+            GetTree().Quit(error is null ? 0 : 1);
             return;
         }
 
-        if (Flag(args, "--shot=") is { } shot)
+        if (shot is not null)
         {
+            _status.Text = error ?? "";
             if (args.Contains("--panel"))
             {
                 _panel.Toggle();
+            }
+
+            if (args.Contains("--menu") && error is null)
+            {
+                OpenPauseMenu();
             }
 
             SaveShot(shot);
             return;
         }
 
-        if (loaded)
+        if (error is null)
         {
             // Grabbed from the start, so looking around works without a click first.
             Input.MouseMode = Input.MouseModeEnum.Captured;
+        }
+        else
+        {
+            OpenMapList(error);
         }
     }
 
     public override void _Input(InputEvent @event)
     {
-        // Picked up here because a focused slider would otherwise swallow Tab.
-        if (@event is InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.Tab })
+        // With no map, the map list handles its own keys.
+        if (@event is not InputEventKey { Pressed: true, Echo: false } key || _player is null)
         {
-            ToggleTuning();
-            GetViewport().SetInputAsHandled();
+            return;
         }
-        else if (@event is InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.T })
+
+        // Picked up here, before the controls see them, because a focused slider would otherwise swallow Tab.
+        switch (key.PhysicalKeycode)
         {
-            FlipTextures(save: true);
-            GetViewport().SetInputAsHandled();
+            case Key.Tab when !_pause.IsOpen:
+            case Key.Escape when _panel.IsOpen:
+                ToggleTuning();
+                break;
+
+            case Key.Escape when _pause.IsOpen:
+                Resume();
+                break;
+
+            case Key.Escape:
+                OpenPauseMenu();
+                break;
+
+            case Key.T when !_pause.IsOpen:
+                FlipTextures(save: true);
+                break;
+
+            default:
+                return;
         }
+
+        GetViewport().SetInputAsHandled();
     }
 
     public override void _Process(double delta)
     {
         if (_mapTitle.Length > 0)
         {
-            string textures = _textures?.Set == TextureSet.HighRes ? "high-res" : "original";
+            string textures = _textureSet == TextureSet.HighRes ? "high-res" : "original";
             _status.Text = $"{_mapTitle}, {Engine.GetFramesPerSecond()} fps, {textures} textures\n{_player?.Status}\n{Controls}";
         }
     }
@@ -157,9 +243,10 @@ public partial class Main : Node
 
         ulong started = Time.GetTicksMsec();
         int bakedBefore = _textures.BakedCount;
-        _textures.Set = _textures.Set == TextureSet.HighRes ? TextureSet.Original : TextureSet.HighRes;
+        _textureSet = _textureSet == TextureSet.HighRes ? TextureSet.Original : TextureSet.HighRes;
+        _textures.Set = _textureSet;
         _view.Retexture(_textures);
-        bool highRes = _textures.Set == TextureSet.HighRes;
+        bool highRes = _textureSet == TextureSet.HighRes;
         GD.Print($"textures: {(highRes ? "high-res" : "original")} in {Time.GetTicksMsec() - started} ms, {_textures.BakedCount - bakedBefore} baked, sky {_view.SkySource ?? "missing"}");
 
         if (save)
@@ -184,40 +271,108 @@ public partial class Main : Node
         }
     }
 
-    private bool TryShowMap(string name, string? spawnFlag, TextureSet textureSet, out Simulation? sim)
+    /// <summary>
+    /// Reads every map's title afresh, so maps dropped in since are listed, and shows the list with
+    /// the last map played highlighted.
+    /// </summary>
+    private void OpenMapList(string? message = null)
     {
-        sim = null;
-        string root = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), ".."));
-        string content = FindContent(root);
-        var cache = new MapCache(Path.Combine(content, "maps"), Path.Combine(root, "cache", "maps"));
-
+        IReadOnlyList<MapListEntry> shown = [];
         try
         {
             ulong started = Time.GetTicksMsec();
-            (BakedMap map, bool baked) = cache.Load(name);
+            MapList list = MapList.Read(_cache);
+            shown = list.Shown;
+            GD.Print($"map list: {list.All.Count} maps read in {Time.GetTicksMsec() - started} ms, {shown.Count} shown");
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            GD.PrintErr($"Couldn't read the maps: {e.Message}");
+            message ??= $"Couldn't read the maps folder: {e.Message}";
+        }
+
+        Input.MouseMode = Input.MouseModeEnum.Visible;
+        _menu.SetMaps(shown);
+        _menu.Open(_lastMap, message);
+    }
+
+    private async Task<bool> PlayFromList(string name)
+    {
+        _menu.ShowMessage($"Loading {name}...");
+
+        // Two frames, so the message is on screen before loading holds everything up.
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        if (ShowMap(name, null) is { } error)
+        {
+            _menu.ShowMessage(error.Replace('\n', ' '));
+            return false;
+        }
+
+        _menu.Close();
+        Input.MouseMode = Input.MouseModeEnum.Captured;
+        return true;
+    }
+
+    private void OpenPauseMenu()
+    {
+        _player!.Paused = true;
+        Input.MouseMode = Input.MouseModeEnum.Visible;
+        _pause.Open(_mapTitle);
+    }
+
+    private void Resume()
+    {
+        _pause.Close();
+        if (_player is not null)
+        {
+            _player.Paused = false;
+        }
+
+        Input.MouseMode = Input.MouseModeEnum.Captured;
+    }
+
+    private void BackToList()
+    {
+        _pause.Close();
+        UnloadMap();
+        OpenMapList();
+    }
+
+    /// <summary>Loads a map and puts you in it. Returns null, or what went wrong.</summary>
+    private string? ShowMap(string name, string? spawnFlag)
+    {
+        try
+        {
+            ulong started = Time.GetTicksMsec();
+            (BakedMap map, bool baked) = _cache.Load(name);
             ulong mapTaken = Time.GetTicksMsec() - started;
 
             ulong texturesStarted = Time.GetTicksMsec();
-            var textures = new WorldTextures(content, Path.Combine(root, "cache"), textureSet);
-            MapView view = MapView.Build(map, textures);
+            var textures = new WorldTextures(_content, _cacheFolder, _textureSet);
+            _view = MapView.Build(map, textures);
             ulong texturesTaken = Time.GetTicksMsec() - texturesStarted;
-            AddChild(view);
+            AddChild(_view);
             _textures = textures;
-            _view = view;
 
-            sim = new Simulation(new BspCollision(map.Collision), _settings);
+            var sim = new Simulation(new BspCollision(map.Collision), _settings);
             (SysVector3 spawn, float yaw) = FindSpawn(map.Entities, spawnFlag);
             _player = new LocalPlayer();
             AddChild(_player);
             float pitch = float.TryParse(Flag(OS.GetCmdlineUserArgs(), "--pitch="), NumberStyles.Float, CultureInfo.InvariantCulture, out float wanted) ? wanted : 0f;
             _player.Begin(sim, spawn, yaw, pitch);
 
-            ulong taken = Time.GetTicksMsec() - started;
+            _map = map;
+            _spawn = spawn;
+            _lastMap = name;
             _mapTitle = map.Info.Title is { } title ? $"{name}: {title}" : name;
+
+            ulong taken = Time.GetTicksMsec() - started;
             string from = baked ? "baked" : "loaded from cache";
-            string set = textureSet == TextureSet.HighRes ? $"high-res ({textures.HighResCount} from the pack)" : "original";
-            GD.Print($"map {name}: {from} in {mapTaken} ms, {view.SurfaceCount} surfaces, {textures.LoadedCount} textures {set}, {textures.Missing.Count} missing, {textures.BakedCount} baked, textures and meshes {texturesTaken} ms (bakes {textures.CacheTime.TotalMilliseconds:F0}, to Godot {textures.UploadTime.TotalMilliseconds:F0}), {taken} ms in all");
-            GD.Print($"  sky {view.Sky.Name}: {view.SkySource ?? "pictures missing, flat colour"}{(view.Sky.Spins ? $", spinning {view.Sky.DegreesPerSecond} degrees a second" : "")}");
+            string set = _textureSet == TextureSet.HighRes ? $"high-res ({textures.HighResCount} from the pack)" : "original";
+            GD.Print($"map {name}: {from} in {mapTaken} ms, {_view.SurfaceCount} surfaces, {textures.LoadedCount} textures {set}, {textures.Missing.Count} missing, {textures.BakedCount} baked, textures and meshes {texturesTaken} ms (bakes {textures.CacheTime.TotalMilliseconds:F0}, to Godot {textures.UploadTime.TotalMilliseconds:F0}), {taken} ms in all");
+            GD.Print($"  sky {_view.Sky.Name}: {_view.SkySource ?? "pictures missing, flat colour"}{(_view.Sky.Spins ? $", spinning {_view.Sky.DegreesPerSecond} degrees a second" : "")}");
             foreach (string missing in textures.Missing)
             {
                 GD.Print($"  missing texture: {missing}");
@@ -228,14 +383,26 @@ public partial class Main : Node
                 GD.Print($"  {problem}");
             }
 
-            return true;
+            return null;
         }
         catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
         {
+            UnloadMap();
             GD.PrintErr($"Couldn't load {name}: {e.Message}");
-            _status.Text = $"Couldn't load {name}:\n{e.Message}";
-            return false;
+            return $"Couldn't load {name}:\n{e.Message}";
         }
+    }
+
+    private void UnloadMap()
+    {
+        _view?.QueueFree();
+        _player?.QueueFree();
+        _view = null;
+        _textures = null;
+        _player = null;
+        _map = null;
+        _mapTitle = "";
+        _status.Text = "";
     }
 
     /// <summary>
@@ -278,9 +445,15 @@ public partial class Main : Node
         return (spawn.GetVector("origin") ?? SysVector3.Zero, spawn.GetFloat("angle") ?? 0f);
     }
 
-    /// <summary>Proves input, simulation and map are joined up, with no window needed.</summary>
-    private static bool RunSmokeTest(Simulation sim)
+    /// <summary>
+    /// Proves input, simulation and map are joined up, with no window needed. Hops in a simulation
+    /// of its own, built from the loaded map just as the player's was, so frames that pass while the
+    /// map list is in use don't move the start.
+    /// </summary>
+    private bool RunSmokeTest()
     {
+        var sim = new Simulation(new BspCollision(_map!.Collision), _settings);
+        sim.AddPlayer(_spawn);
         for (int i = 0; i < SmokeTestTicks; i++)
         {
             sim.Tick([new MoveCommand(i * 0.5f, 0, 1, 0, Jump: true)]);
@@ -289,6 +462,35 @@ public partial class Main : Node
         PlayerState s = sim.Players[0];
         GD.Print($"after {SmokeTestTicks} ticks of hopping: speed {s.FlatSpeed:F0}, at {s.Position}");
         return s.FlatSpeed > 1f;
+    }
+
+    /// <summary>The smoke test the long way round: pick from the list, Esc menu, Map list, pick again.</summary>
+    private async void RunListSmokeTest(string name)
+    {
+        bool ok = await PickFromList(name) && RunSmokeTest();
+        if (ok)
+        {
+            OpenPauseMenu();
+            BackToList();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            ok = _menu.IsOpen && _player is null && await PickFromList(name) && RunSmokeTest();
+        }
+
+        GD.Print(ok ? "smoke test ok" : "smoke test failed");
+        GetTree().Quit(ok ? 0 : 1);
+    }
+
+    private async Task<bool> PickFromList(string name)
+    {
+        _menu.Search(name, select: name);
+        GD.Print($"map list: searched for {name}, highlighted {_menu.Selected ?? "nothing"}");
+        if (_menu.Selected != name)
+        {
+            return false;
+        }
+
+        _menu.ChooseSelected();
+        return await _loading;
     }
 
     private async void SaveShot(string path)

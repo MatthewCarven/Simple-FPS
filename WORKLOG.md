@@ -227,3 +227,145 @@ either. It does differ from the 6 November run, because the swim cap changed it 
 
 3b and 3c will run one after the other, not side by side as planned, since they'd have to share this
 folder. 3c goes first: it's smaller, and a map list makes every later test easier to launch.
+
+## 2026-11-24: milestone 3c, map list
+
+Built in its own worktree, side by side with 3b. The game now opens on a map list unless `--map=` is
+given. Asked Matthew first, in two rounds, and he took every recommendation:
+- Titles: a quick read rather than baking all 375. The list reads each map's header and entity text,
+  where the title and author are, and hashes a map's files only when another map's are the same size,
+  to find copies (16 maps). It takes about 0.2 s for all 375 once the files are in the disk cache (150
+  to 230 ms over several runs), and about 0.5 s the first time after a build. Nothing is written.
+- Copies: the shortest name is kept, then the one that sorts first. That keeps `q2rdm2` over
+  `q2pduel7` and `q2dm1x` over `q2dm1-roofquad`. The other six are as before. The bake's index uses the
+  same rule now (`MapCopies`).
+- The 9 maps without deathmatch spawns are hidden: `q2_ctfb1` (a CTF map), `q2dm1-1`, `quad`,
+  `quadshot`, `recon`, `remains`, `risc1`, `risc2` and `robbie1`. `--map=` still loads them.
+- The original levels and their edits are listed like any other map. Keeping them out of tuning is
+  about what movement is tuned on, not what can be played.
+- Look: one list sorted by title, with the author and file name beside it, and a search box that keeps
+  the keyboard. Typing filters by title, author or file name, and every word has to match. Up, Down,
+  Page Up and Page Down move, Enter or a double-click plays, Esc clears the search. A map with no title
+  shows its file name. The sort skips punctuation in front of a title, so `'The Edge' - Modified` files
+  under T. That was my call after the first picture put three such titles at the top.
+- Esc in a map opens a menu: Resume, Map list, Quit. It replaces Esc just freeing the mouse. Esc again
+  resumes, and Esc with the tuning panel open closes the panel. The world keeps running behind the
+  menu, as it does behind the tuning panel. Only your input stops.
+
+358 maps are listed: 375, less 8 copies and 9 without spawns. The list is read afresh each time it
+opens, so a map dropped in while playing shows up on the way back, and coming back from a map
+highlights it. A map that won't load, picked from the list or named by a bad `--map=`, brings the list
+up with the error under it.
+
+`--smoke-test` and `--shot` still skip the list and play `ringbase` unless `--map` names another map.
+Two flags were added for checking without hands. `--list` opens the list anyway: the smoke test then
+picks the map from the list, goes back through the Esc menu, and picks it again before hopping, and
+`--shot` takes a picture of the list. `--menu` opens the Esc menu in a `--shot` picture. The smoke test
+now hops in a simulation of its own, built from the loaded map the same way as the player's, so frames
+that pass while the list is in use can't move its start.
+
+Checked:
+- 182 tests pass: the 162 from before, one of them changed for the new copy rule, and 20 new. The build
+  has no warnings. A whole-collection test checks the quick read agrees with the bake on every map:
+  name, `.bsp`, title, author and copy.
+- The headless smoke test on `ringbase` from spawns 0, 3 and 6 ends at exactly the same position and
+  speed as on the previous commit, built in a throwaway worktree. Through the list it ends at the same
+  spot both times, before and after going back through the Esc menu.
+- Headless: a plain launch opens the list with 358 maps. A bad `--map=` opens the list with the error,
+  and the smoke test still fails with exit 1 on it. `q2dm1-nade` plays through the list, and a hidden
+  copy (`q2pduel7`) can't be found in it.
+- Two pictures in a window, which Matthew OK'd: the list, and the Esc menu over `ringbase`. Both looked
+  right. The punctuation sort came after the pictures and is checked by a test only.
+
+Not checked: nothing was played by hand. Typing in the search box, the arrow keys, Enter, double-click
+and the menu's buttons have only been run by script or headless, and grabbing the mouse after Resume
+hasn't been tried. The read times were measured with the maps already in the disk cache, so the first
+start after a reboot will be slower.
+
+## 2026-11-24: milestone 3b, textures and skies
+
+Built in its own worktree beside 3c. Textures and skies now load from our own baked files, the high-res
+pack swaps in where it fits, T flips between high-res and the originals, and skies are drawn.
+
+Asked Matthew in two rounds, and he took every recommendation:
+- Skies: each map's own sky box from `content/env`, drawn at infinity behind its sky surfaces, which still
+  hide what's behind them, as in the original. A map naming no sky gets Quake 2's default, `unit1_`. The
+  46 maps that set a slow spin (`skyrotate` about `skyaxis`) keep it.
+- The key is T. The choice is saved in `user://options.json`, a new per-player options file that invert Y
+  and mouse speed can join later. High-res is the default.
+- 16 high-res pictures don't have their `.wal`'s shape (384 x 128 for a 256 x 256 wall, for instance).
+  They're left out, so those names keep the original.
+- Second round, after the first pictures: the pack's skies aren't remakes. Its `unit1_` to `unit9_` are
+  one mountain range in two tints, where Quake 2's are red skies with towers and statues, and `unit1_` is
+  the default, so about 190 maps would have changed look. Matthew chose to use a pack sky only when it
+  looks like the original. Each side shrunk to 16 x 16 differs by 1 in 255 for `night1` and by 91 to 101
+  for the unit skies, so the limit is 32. Today only `night1` swaps in. (I told him the pack had 10
+  skies. It has 9.)
+
+How it works. Each texture name bakes to its own file, `cache/textures/original/<name>.tex` or
+`cache/textures/highres/<name>.tex`, already decoded and mipmapped, so maps that share textures share
+bakes. Skies bake to `cache/skies/<set>/<name>.sky` as six cube map faces. Like maps, each file holds a
+SHA-256 of its source files and `TextureFile.Version`, and bakes again if either changes; the sources are
+read on every load, but only to hash them. A high-res bake keeps the `.wal`'s size, which is what the
+map's texture coordinates are measured in. A rejected pack sky bakes as an empty file, so the comparison
+isn't made again. The bake file uses the same tagged sections as map bakes, now shared in `BakeSections`.
+The PNG, Targa and PCX readers are our own, in Core, so they're tested without Godot. Sky faces are now
+meshed, so `BakeFile.Version` is 2 and every map bakes again (the whole collection grows from 632 to
+639 MB).
+
+The texture index used to list all 31,082 `.wal` files on every map load, about 100 ms. It now checks
+the exact path first and only lists the folder when a bare name is needed (33 maps).
+
+Sky orientation. Quake 2's six pictures aren't named from one viewpoint: looking east you see `rt`,
+looking north `bk`. The table was checked on all of `content/env` before writing any code: with it,
+neighbouring sides join with no more change than between neighbouring pixels (median 3.0 against 3.2),
+and with two sides swapped the change is five times bigger. In a window, the view north on `rota4c`
+matches `unit1_bk.tga` the right way round.
+
+Load times on `ringbase`, headless, the base commit and this branch alternating over 6 rounds:
+- Base: 206 to 229 ms in all. (Earlier the same evening it measured 183 to 190 ms; the machine's speed
+  moves.)
+- Originals: 121 to 134 ms. High-res: 158 to 183 ms, with 75 of its 86 textures from the pack.
+- In a fast round, textures and meshes took 82 ms with originals: 26 ms reading bakes and hashing their
+  sources, 6 ms handing pictures to Godot, and the rest building meshes, which 3b didn't touch. High-res:
+  127 ms, of which 49 and 18.
+- The first load bakes. `ringbase`'s high-res set took about 0.5 s, and the first flip to the originals
+  85 ms. Its bakes come to 31 MB for both sets.
+
+Content findings:
+- The maps' drawn faces use 4,188 texture names. 4,011 have a readable `.wal`, 1,331 come from the pack,
+  and 177 are the checker stand-in, 2 of those because their `.wal` header is bad (`textures/blue1.wal`,
+  `textures/e2u3/green0_1.wal`), as before.
+- Baking every texture would take 239 MB for the originals and 903 MB for high-res.
+- 375 maps name 46 skies. 7 have no pictures and show the flat colour: `bonechill512_` (`q2_q3dm1` and
+  its two betas), `pbsky3` (`q2dm1_mcp`), `q3dm7`, `nuke2` (`railpit`) and `unit1` (`return_dm1`).
+- Damaged sky files: the five `env/london/*.tga` are cut short and `env/mountainlakes*.tga` lost bytes,
+  probably to a text-mode copy (the 2002 copies in `env/death_jump` are intact). Their `.pcx` copies are
+  used instead.
+
+Checked:
+- 247 tests pass after merging 3c: its 182 and 65 new. The build has no warnings.
+- Every texture the maps use bakes, reads back from disk unchanged, and the originals match the old
+  loader's pixels exactly. Every high-res bake keeps its `.wal`'s size and shape.
+- Every sky in `env` and the pack (251 names, 246 boxes) bakes and reads back. 3 don't join at their
+  edges, all because of their pictures: `teehee_` is a joke collage ("I'm too lazy to make a bottom"),
+  `hell1`'s bottom doesn't match its walls, and `city_`'s ground is busy. The test allows 5%; a layout
+  mistake would break nearly all of them.
+- Our readers against Pillow, on every image the game might read: all 1,882 PNGs identical; 1,459 Targas
+  identical and 10 refused by both; 1,373 PCXs identical, 66 refused by us because they have no palette
+  (Pillow guesses greyscale; their `.tga` copies are used), and 1 refused by Pillow only. Two fixes came
+  out of it: Targa alpha only when the header says there is some, and a packet running past the end of
+  the picture counts as damage.
+- Movement is unchanged: the base commit and this branch end the smoke test's 240 ticks of hopping on
+  `ringbase` (spawn 0) at exactly the same speed and position.
+- The smoke test now flips the textures both ways, headless, and both smoke tests pass after the merge,
+  including 3c's route through the map list and back.
+- Pictures in a window, after telling Matthew: high-res walls on `q2duel5`, its sky in both sets, and the
+  skies on `rota4c` and `railasnail`. All looked right: upright, unmirrored, joined, in full colour.
+
+Not checked: nothing was played by hand. The T key has only been run through the smoke test's flips,
+never pressed, and the spin hasn't been watched. High-res was judged from a few pictures. `--pitch=` was
+added for those pictures, and `--textures=original|highres` sets one run's textures without saving.
+The whole-collection texture test needed the .NET heap capped (`DOTNET_GCHeapHardLimit`) once, while the
+laptop was down to 0.4 GB of free memory with another project's game running; with 1.3 GB free the
+whole suite passed without it.

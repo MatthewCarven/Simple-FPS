@@ -20,7 +20,7 @@ instead of snagging on them, and every shot and blast shoves you about.
 | Pushes | Every explosion shoves you. Gunfire pushes both shooter and target a little, so your own gun steers you mid-hop. |
 | Server movement | Agreed 2026-11-08. Each server owns its movement settings, and only its host (or admins they name) can change them. A change is announced to everyone at once and takes effect at the next round. The announcement carries a picture the game draws itself: a jump run with the old numbers and the new, both arcs drawn, plus the old and new values. Servers with changed movement get a badge and a one-line summary, like "low gravity, fast run", in the server list. |
 | Lighting | Cheap. Each map's own baked light, plus small moving lights on energy rounds, muzzle flashes and explosions. |
-| Textures | Maps keep their look. High-res swapped in where names match, otherwise the original or a stand-in. A per-map file can override any of it. A switch flips between high-res and the originals (2026-11-24). Original textures stay smooth, as now, not pixelated. |
+| Textures | Maps keep their look. High-res swapped in where names match, otherwise the original or a stand-in. A per-map file can override any of it. A switch flips between high-res and the originals (2026-11-24). Original textures stay smooth, as now, not pixelated. Skies are each map's own, and a high-res sky only swaps in if it's the original redrawn (2026-11-24). |
 | Later mode | Weapons of Destruction style: huge arsenal, guided weapons, big physical blasts, gadgets and traps. Our own weapon designs. |
 | Audience | Just Matthew for now, public one day. Everything in the folder today is build placeholder, replaced before shipping. |
 
@@ -45,7 +45,8 @@ instead of snagging on them, and every shot and blast shoves you about.
   by bare name. 330 of the 363 maps have every texture at its exact path.
 - The high-res pack is `content/q2textures-master/pak99_textures/textures`, laid out with the same
   paths the maps ask for. It covers 1,469 of the 4,527 names, including every texture in `q2duel5`
-  and `q2rdm10`. 49 maps are fully covered. It also holds skies, models and icons.
+  and `q2rdm10`. 49 maps are fully covered. It also holds models, icons and 9 skies. Only `night1` is a
+  remake of its original; `unit1_` to `unit9_` are one mountain range in two tints (found at 3b).
 - `content/qpakman-master` is a GPL pak file tool. We read loose files, so we don't need it, and its
   code mustn't be copied into this project.
 - WAL textures hold no colours of their own. `content/palette.act` holds the palette, taken from the
@@ -100,7 +101,10 @@ instant hit, projectile, guided, homing, placed gadget, turret.
 `cache/`, keyed on file hash and bake version, so changing the format just re-bakes. New maps can be made
 with any free Quake 2 map editor and compiler, so we don't need our own editor. Built at 3a: maps bake
 to `cache/maps/<name>.bake`, a list of tagged sections, so bot paths are one more section. An `index.json`
-beside them lists each map's title, author and which map it's a copy of.
+beside them lists each map's title, author and which map it's a copy of. The map list at start (3c)
+doesn't wait for bakes: it reads every map's title straight from the map in about 0.2 s, and hides
+copies (keeping the shortest name) and maps without deathmatch spawns. Built at 3b: textures and skies
+bake to `cache/textures` and `cache/skies`, one file per name, decoded and mipmapped, keyed the same way.
 
 ## Milestones
 
@@ -113,7 +117,8 @@ Each is about one session, and each ends in something you can run.
    played it by hand and kept every default (2026-11-24). Doors and lifts aren't solid until milestone 4.
 3. **Bake.** Own level format and cache, stand-in textures, high-res swapping with a switch back to the
    originals, skies, `.override` files, and a map list at start with titles and authors. Sounds and
-   models moved to the milestones that first use them (agreed 2026-11-24).
+   models moved to the milestones that first use them (agreed 2026-11-24). Built 2026-11-24 in three
+   sessions; Matthew's hand checks are in TODO.md.
 4. **Map objects.** Doors, lifts, buttons, teleporters, jump pads. Many maps depend on these.
 5. **Guns.** A few weapons, damage, knockback, recoil, energy round lights, pickups placed from the map's own item spots.
    Sounds are baked here, since guns are the first thing to use them.

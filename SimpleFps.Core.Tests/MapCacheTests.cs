@@ -106,7 +106,8 @@ public sealed class MapCacheTests : IDisposable
     [Fact]
     public void CopiesUnderAnotherNameAreMarkedInTheIndex()
     {
-        AddMap("copy");
+        // "zed" is kept over "alpha" because it's shorter, though it sorts later.
+        AddMap("zed");
         AddMap("alpha");
         AddMap("other", texture: "base/wall");
         AddOverride("alpha-nade", "maps/alpha.bsp", "Tiny Grenades");
@@ -117,8 +118,8 @@ public sealed class MapCacheTests : IDisposable
         }
 
         IReadOnlyList<MapIndexEntry> maps = _cache.Index().Maps;
-        Assert.Equal(["alpha", "alpha-nade", "copy", "other"], maps.Select(m => m.Name));
-        Assert.Equal([null, null, "alpha", null], maps.Select(m => m.DuplicateOf));
+        Assert.Equal(["alpha", "alpha-nade", "other", "zed"], maps.Select(m => m.Name));
+        Assert.Equal(["zed", null, null, null], maps.Select(m => m.DuplicateOf));
         Assert.Equal("Tiny Room", maps[0].Title);
         Assert.Equal("Someone", maps[0].Author);
         Assert.Equal("alpha", maps[1].Bsp);
