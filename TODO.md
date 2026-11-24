@@ -3,9 +3,8 @@
 ## Next
 - [x] Matthew: play it and tune it (double-click `start.cmd`, Tab for the panel). Done 2026-11-24: it
       feels good with every default unchanged.
-- [ ] Matthew: try the parts nobody has confirmed by hand yet: hopping backwards while firing, squeezing
-      through gaps, ladders, water, crouch, R respawn, V fly, and moving a slider
-      on the panel to see the change straight away.
+- [ ] Matthew: try the parts nobody has confirmed by hand yet: squeezing through gaps, ladders, water,
+      crouch, R respawn, V fly, and moving a slider on the panel to see the change straight away.
 - [ ] Milestone 3: bake (see PLAN.md).
 
 ## Milestone 3
