@@ -20,7 +20,7 @@ instead of snagging on them, and every shot and blast shoves you about.
 | Pushes | Every explosion shoves you. Gunfire pushes both shooter and target a little, so your own gun steers you mid-hop. |
 | Server movement | Agreed 2026-11-08. Each server owns its movement settings, and only its host (or admins they name) can change them. A change is announced to everyone at once and takes effect at the next round. The announcement carries a picture the game draws itself: a jump run with the old numbers and the new, both arcs drawn, plus the old and new values. Servers with changed movement get a badge and a one-line summary, like "low gravity, fast run", in the server list. |
 | Lighting | Cheap. Each map's own baked light, plus small moving lights on energy rounds, muzzle flashes and explosions. |
-| Textures | Maps keep their look. High-res swapped in where names match, otherwise the original or a stand-in. A per-map file can override any of it. |
+| Textures | Maps keep their look. High-res swapped in where names match, otherwise the original or a stand-in. A per-map file can override any of it. A switch flips between high-res and the originals (2026-11-24). Original textures stay smooth, as now, not pixelated. |
 | Later mode | Weapons of Destruction style: huge arsenal, guided weapons, big physical blasts, gadgets and traps. Our own weapon designs. |
 | Audience | Just Matthew for now, public one day. Everything in the folder today is build placeholder, replaced before shipping. |
 
@@ -104,13 +104,17 @@ Each is about one session, and each ends in something you can run.
 
 0. **Set up.** Repo, projects, Godot in a subfolder, content moved, tests running. Done.
 1. **See a map.** Read Quake 2 maps and fly round one with textures and baked light. A test loads all
-   363. Done, apart from Matthew trying the fly controls by hand.
+   363. Done.
 2. **Move.** Collision, run, jump, hop, ladders, water, wall grace, tuning panel. Done: Matthew
    played it by hand and kept every default (2026-11-24). Doors and lifts aren't solid until milestone 4.
-3. **Bake.** Own level format, cache, MD2 models, sounds, stand-in textures, high-res swapping.
+3. **Bake.** Own level format and cache, stand-in textures, high-res swapping with a switch back to the
+   originals, skies, `.override` files, and a map list at start with titles and authors. Sounds and
+   models moved to the milestones that first use them (agreed 2026-11-24).
 4. **Map objects.** Doors, lifts, buttons, teleporters, jump pads. Many maps depend on these.
 5. **Guns.** A few weapons, damage, knockback, recoil, energy round lights, pickups placed from the map's own item spots.
-6. **Bots.** Paths generated at bake time, then a real deathmatch. This is the first full game.
+   Sounds are baked here, since guns are the first thing to use them.
+6. **Bots.** Paths generated at bake time, then a real deathmatch. This is the first full game. MD2 models
+   are baked here, for the bots' bodies.
 7. **Online.** Split the server off properly, add prediction, play between the laptop and the desktop.
    The server sends its movement settings on joining, and announces changes, which apply at the next round.
 8. **Destruction mode.** The big arsenal, guided weapons, gadgets, traps.

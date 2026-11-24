@@ -163,3 +163,11 @@ hand. Everything in milestone 2 has now been tried by hand except the swim cap.
 
 His `tuning.json` was left with gravity at 200 after that test, so a launch from it floats until he presses
 "Reset all to defaults" on the panel, which he'll do himself.
+
+## 2026-11-24: milestone 3 planned
+
+Checked what the tuning session left: defaults unchanged, the mouse grab and swim cap look right, and 120
+tests pass. Asked Matthew about milestone 3. Agreed: it covers maps and textures only. Sounds wait for guns
+(milestone 5) and models for bots (milestone 6), so each is built against something that uses it. Original
+textures stay smooth, a switch flips between high-res and the originals, and a map list at start replaces
+typing `--map=`. Split into three sessions in TODO.md: 3a the map bake, then 3b textures and 3c the map list.

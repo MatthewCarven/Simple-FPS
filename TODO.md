@@ -8,11 +8,33 @@
 - [ ] Milestone 3: bake (see PLAN.md).
 
 ## Milestone 3
+Agreed 2026-11-24: maps and textures only, run as three sessions. 3a first, then 3b and 3c, which can
+run side by side.
+
+3a, map bake:
+- [ ] Bake each map to our own format in `cache/`, keyed on file hash and bake version: meshes, light
+      atlas, collision, entities, title and author. The game loads only the baked file.
+- [ ] Honour the `.override` entity files.
+- [ ] Spot renamed copies by hash (`q2pduel7` = `q2rdm2`), so the map list can hide them.
+
+3b, textures:
+- [ ] Bake textures to our own format.
 - [ ] Swap in high-res textures from `content/q2textures-master/pak99_textures/textures`, keeping the
       `.wal` size for texture coordinates.
-- [ ] Honour the `.override` entity files.
+- [ ] A switch between high-res and the original textures: a setting, plus a key while testing. Original
+      textures stay smooth, as now.
 - [ ] Skies. They're a flat colour for now. Maps name theirs with the `sky` key, and both `content/env`
       and the pack hold images.
+
+3c, map list:
+- [ ] A map list at start, with titles and authors from the bake and renamed copies hidden.
+      `start.cmd --map=name` still skips it.
+
+## Milestone 5
+- [ ] Bake sounds (moved from milestone 3).
+
+## Milestone 6
+- [ ] Bake MD2 models (moved from milestone 3).
 
 ## Milestone 7
 - [ ] The server owns the movement settings and sends them to each player on joining. Only the host,
