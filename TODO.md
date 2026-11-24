@@ -8,9 +8,9 @@
 - [ ] Milestone 3: bake (see PLAN.md).
 
 ## Milestone 3
-Agreed 2026-11-24: maps and textures only, run as three sessions. 3a first, then 3c and 3b one after the
-other. They can't run side by side: a worktree has no `content/` (it's git-ignored), and in a shared
-folder one session's half-finished edit breaks the other's build.
+Agreed 2026-11-24: maps and textures only, run as three sessions. 3a first, then 3b and 3c side by side
+(Matthew, 2026-11-24), each in its own git worktree under `.claude/worktrees`. A worktree has no `content/`
+of its own, so the game and `start.cmd` look for it and for Godot further up (06e8153).
 
 3a, map bake:
 - [x] Bake each map to our own format in `cache/`, keyed on file hash and bake version: meshes, light
