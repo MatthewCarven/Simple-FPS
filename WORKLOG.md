@@ -129,7 +129,9 @@ The click that grabs it back after Esc no longer fires the test gun; firing wait
 up. Screenshot and smoke-test runs leave the mouse alone. It builds with no warnings, passes the headless
 smoke test, and the 24 November run was on that build. 115 tests pass.
 
-Still unverified: the log only records map loads, so it can't show which features he tried. Nobody has
-confirmed these by hand yet: the recoil escape (hopping backwards while firing), corner slide and squeeze,
-ladders, water, crouch, R respawn, V fly, and a slider change taking effect live. That's a TODO item for
+He did try clipping corners. It's far more forgiving than the Quake 2 he remembers, which he likes and
+which was the point, so corner slide stays at reach 8 and speed 300.
+
+Still unverified: the log only records map loads, so it can't show which other features he tried. Nobody
+has confirmed these by hand yet: the recoil escape (hopping backwards while firing), squeeze, ladders, water, crouch, R respawn, V fly, and a slider change taking effect live. That's a TODO item for
 him. Mouse speed is fixed at 0.1 degrees a pixel with no setting, and he didn't raise it.
