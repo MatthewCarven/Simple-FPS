@@ -157,4 +157,9 @@ headless smoke test passes. The change hasn't been played by hand yet.
 On `rexro` he squeezed between wooden walls and sent a picture showing the full 4 units of squeeze holding
 while he stood in the gap. So squeeze works by hand, at amount 4 and speed 60. Ladders work too: he climbed the one behind spawn 2.
 
-Still not confirmed by hand: crouch, R respawn, V fly, a slider change taking effect live, and the swim cap.
+Back on `ringbase` he sent pictures standing, crouched and flying above the map, and reported respawn working
+and gravity set to 200 taking effect live. So crouch, V fly, R respawn and the panel's sliders all work by
+hand. Everything in milestone 2 has now been tried by hand except the swim cap.
+
+His `tuning.json` was left with gravity at 200 after that test, so a launch from it floats until he presses
+"Reset all to defaults" on the panel, which he'll do himself.

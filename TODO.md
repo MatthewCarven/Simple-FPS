@@ -3,9 +3,8 @@
 ## Next
 - [x] Matthew: play it and tune it (double-click `start.cmd`, Tab for the panel). Done 2026-11-24: it
       feels good with every default unchanged.
-- [ ] Matthew: try the parts nobody has confirmed by hand yet: crouch, R respawn, V fly, and moving a
-      slider on the panel to see the change straight away. Also check that bobbing at a liquid's surface
-      no longer builds speed (capped 2026-11-24).
+- [ ] Matthew: check that bobbing at a liquid's surface no longer builds speed (capped 2026-11-24). It's
+      the last movement change not yet tried by hand.
 - [ ] Milestone 3: bake (see PLAN.md).
 
 ## Milestone 3
