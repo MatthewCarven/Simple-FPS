@@ -1,8 +1,11 @@
 # TODO
 
 ## Next
-- [ ] Matthew: play it and tune it (double-click `start.cmd`, Tab for the panel). Keyboard and mouse
-      haven't been tried by hand yet, and feel can only be judged by playing.
+- [x] Matthew: play it and tune it (double-click `start.cmd`, Tab for the panel). Done 2026-11-24: it
+      feels good with every default unchanged.
+- [ ] Matthew: try the parts nobody has confirmed by hand yet: hopping backwards while firing, clipping
+      corners and squeezing through gaps, ladders, water, crouch, R respawn, V fly, and moving a slider
+      on the panel to see the change straight away.
 - [ ] Milestone 3: bake (see PLAN.md).
 
 ## Milestone 3

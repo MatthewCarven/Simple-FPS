@@ -117,3 +117,19 @@ Matthew asked about making the tuning panel a server setting, announced publicly
 changes. Agreed: the host alone changes it, the change applies at the next round, the game draws the
 picture from a jump run with the old and new numbers, and the server list marks changed servers. It's in
 PLAN.md and under milestone 7 in TODO.md. Nothing built yet.
+
+## 2026-11-24: first play by hand
+
+Matthew played `ringbase` by hand on 8, 17 and 24 November and says the movement feels good with every
+default as it was. So `MoveSettings` is unchanged, and his `tuning.json` still holds the defaults. The
+panel was opened and closed on the 17th with nothing moved.
+
+One fix: the mouse is now grabbed when the game starts, where before looking around needed a click first.
+The click that grabs it back after Esc no longer fires the test gun; firing waits for that button to come
+up. Screenshot and smoke-test runs leave the mouse alone. It builds with no warnings, passes the headless
+smoke test, and the 24 November run was on that build. 115 tests pass.
+
+Still unverified: the log only records map loads, so it can't show which features he tried. Nobody has
+confirmed these by hand yet: the recoil escape (hopping backwards while firing), corner slide and squeeze,
+ladders, water, crouch, R respawn, V fly, and a slider change taking effect live. That's a TODO item for
+him. Mouse speed is fixed at 0.1 degrees a pixel with no setting, and he didn't raise it.

@@ -105,8 +105,8 @@ Each is about one session, and each ends in something you can run.
 0. **Set up.** Repo, projects, Godot in a subfolder, content moved, tests running. Done.
 1. **See a map.** Read Quake 2 maps and fly round one with textures and baked light. A test loads all
    363. Done, apart from Matthew trying the fly controls by hand.
-2. **Move.** Collision, run, jump, hop, ladders, water, wall grace, tuning panel. Built and tested,
-   but the feel is still Matthew's to judge by playing. Doors and lifts aren't solid until milestone 4.
+2. **Move.** Collision, run, jump, hop, ladders, water, wall grace, tuning panel. Done: Matthew
+   played it by hand and kept every default (2026-11-24). Doors and lifts aren't solid until milestone 4.
 3. **Bake.** Own level format, cache, MD2 models, sounds, stand-in textures, high-res swapping.
 4. **Map objects.** Doors, lifts, buttons, teleporters, jump pads. Many maps depend on these.
 5. **Guns.** A few weapons, damage, knockback, recoil, energy round lights, pickups placed from the map's own item spots.
