@@ -288,8 +288,27 @@ public sealed class PlayerMove(ICollisionWorld world, MoveSettings settings)
             wish.Z -= SwimDrift;
         }
 
+        float flatBefore = new Vector2(s.Velocity.X, s.Velocity.Y).Length();
         Accelerate(ref s, wish * SwimSpeedScale, settings.Accelerate);
+        LimitSwimGain(ref s, flatBefore);
         StepSlide(ref s);
+    }
+
+    /// <summary>
+    /// Swimming can't build flat speed past a normal swim. Without this, bobbing at the surface
+    /// builds speed: each dip arrives moving down, which leaves the swim push room to add more.
+    /// Speed brought in from outside, such as a blast, is kept, and the liquid slows it.
+    /// </summary>
+    private void LimitSwimGain(ref PlayerState s, float flatBefore)
+    {
+        float cap = MathF.Max(flatBefore, settings.RunSpeed * SwimSpeedScale);
+        float flat = new Vector2(s.Velocity.X, s.Velocity.Y).Length();
+        if (flat > cap)
+        {
+            float scale = cap / flat;
+            s.Velocity.X *= scale;
+            s.Velocity.Y *= scale;
+        }
     }
 
     private void GroundMove(ref PlayerState s, in MoveCommand cmd)

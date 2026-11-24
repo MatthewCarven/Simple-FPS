@@ -604,6 +604,45 @@ public class MovementTests
         Assert.InRange(after.FlatSpeed, 100f, 160f);
     }
 
+    [Theory]
+    [InlineData(Contents.Water, 0f)]
+    [InlineData(Contents.Water, -45f)]
+    [InlineData(Contents.Lava, -15f)]
+    [InlineData(Contents.Slime, -30f)]
+    public void BobbingAtTheSurfaceCantOutpaceASwim(Contents liquid, float pitch)
+    {
+        // Matthew found this one: hold jump and forward at the surface, looking up. It used to build
+        // speed past a run, as each dip let the swim push add more.
+        var world = new TestWorld().Floor()
+            .Box(new Vector3(-100000, -100000, 0), new Vector3(100000, 100000, 200), liquid);
+        var move = new PlayerMove(world, new MoveSettings());
+        PlayerState s = PlayerState.At(new Vector3(0, 0, 150));
+        float top = 0f;
+        int surfaceChanges = 0;
+
+        for (int i = 0; i < 1200; i++)
+        {
+            int level = s.WaterLevel;
+            move.Step(ref s, new MoveCommand(0, pitch, 1, 0, Jump: true));
+            top = MathF.Max(top, s.FlatSpeed);
+            surfaceChanges += s.WaterLevel != level ? 1 : 0;
+        }
+
+        Assert.True(surfaceChanges > 20, $"Never bobbed at the surface ({surfaceChanges} changes), so this proves nothing.");
+        Assert.True(top <= 151f, $"Reached {top:F0}.");
+    }
+
+    [Fact]
+    public void SpeedBroughtIntoLiquidIsKeptButNotAddedTo()
+    {
+        PlayerState s = PlayerState.At(new Vector3(0, 0, 100));
+        s.Velocity = new Vector3(400, 0, 0);
+
+        PlayerState after = Run(Pool(), s, Forward(), 10);
+
+        Assert.InRange(after.FlatSpeed, 200f, 400f);
+    }
+
     [Fact]
     public void YouCanClimbOutOfWaterOntoALedge()
     {

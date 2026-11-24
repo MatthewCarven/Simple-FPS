@@ -137,3 +137,19 @@ capped at 700.
 Still unverified: the log only records map loads, so it can't show which other features he tried. Nobody
 has confirmed these by hand yet: squeeze, ladders, water, crouch, R respawn, V fly, and a slider change taking effect live. That's a TODO item for
 him. Mouse speed is fixed at 0.1 degrees a pixel with no setting, and he didn't raise it.
+
+## 2026-11-24: swimming can't build speed any more
+
+Matthew swam in the lava under `ringbase` and called it pretty accurate. Lava, slime and water all swim the
+same way, so that covers swimming. He couldn't find the map's water. The deep tank is about 360 units ahead
+and to the right of spawn 7, one level down.
+
+He also found that holding jump and forward at the surface, looking a little up, built speed: 260 for him. A
+test pool showed it going further, about 300 looking level and 510 looking 45 degrees up. That's past a run,
+which breaks the rule that only blasts, recoil and jump pads take you past one. The cause was bobbing: each dip
+back into the liquid arrived moving down, which left the swim push room to add more. He chose to remove it.
+
+Swimming now can't build flat speed past a normal swim (150). Speed brought in from outside, such as a blast,
+is kept, and the liquid slows it. The bobbing test covers water, lava and slime at four angles, and it reached
+301 before the fix. Climbing out onto a ledge still works. 120 tests pass, the build has no warnings, and the
+headless smoke test passes. The change hasn't been played by hand yet.
