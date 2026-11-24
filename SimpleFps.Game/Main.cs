@@ -131,7 +131,7 @@ public partial class Main : Node
     {
         sim = null;
         string root = Path.GetFullPath(Path.Combine(ProjectSettings.GlobalizePath("res://"), ".."));
-        string content = Path.Combine(root, "content");
+        string content = FindContent(root);
         var cache = new MapCache(Path.Combine(content, "maps"), Path.Combine(root, "cache", "maps"));
 
         try
@@ -167,6 +167,25 @@ public partial class Main : Node
             _status.Text = $"Couldn't load {name}:\n{e.Message}";
             return false;
         }
+    }
+
+    /// <summary>
+    /// The content folder beside the project, or the nearest one further up. A git worktree in
+    /// <c>.claude/worktrees</c> has none of its own, because content isn't in git, so it uses the
+    /// main folder's. Bakes still go in the worktree's own <c>cache/</c>.
+    /// </summary>
+    private static string FindContent(string root)
+    {
+        for (DirectoryInfo? dir = new(root); dir is not null; dir = dir.Parent)
+        {
+            string content = Path.Combine(dir.FullName, "content");
+            if (Directory.Exists(Path.Combine(content, "maps")))
+            {
+                return content;
+            }
+        }
+
+        return Path.Combine(root, "content");
     }
 
     private static (SysVector3 Position, float Yaw) FindSpawn(IReadOnlyList<BspEntity> entities, string? spawnFlag)

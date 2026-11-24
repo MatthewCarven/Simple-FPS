@@ -6,6 +6,8 @@ rem Launching with --path never rebuilds, so the build has to come first.
 rem Anything passed to this script lands after the bare "--" as a game flag.
 
 set "EXE=%~dp0..\MinerCraft\Godot_v4.7.1-stable_mono_win64\Godot_v4.7.1-stable_mono_win64_console.exe"
+rem From a git worktree in .claude\worktrees\<name>, the MinerCraft folder is three levels further up.
+if not exist "%EXE%" set "EXE=%~dp0..\..\..\..\MinerCraft\Godot_v4.7.1-stable_mono_win64\Godot_v4.7.1-stable_mono_win64_console.exe"
 
 if not exist "%EXE%" (
   echo Godot 4.7.1 mono not found at:

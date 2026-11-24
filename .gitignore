@@ -31,3 +31,6 @@ Godot_v*/
 /players/
 /sound/
 /textures/
+
+# Git worktrees made by Claude sessions. Each finds content/ in the main folder.
+/.claude/worktrees/
