@@ -18,6 +18,7 @@ instead of snagging on them, and every shot and blast shoves you about.
 | Air control | Almost none, like ice. To change direction you touch down. |
 | Hop landing | Turning on landing costs speed. Gentle curves stay fast, hard corners slow you down. |
 | Pushes | Every explosion shoves you. Gunfire pushes both shooter and target a little, so your own gun steers you mid-hop. |
+| Map objects | Agreed 2026-11-25. Teleporters keep your speed, turned to face the exit, where the original stopped you dead. Jumping off a moving lift or train keeps its speed, so lift launches and train surfing are tricks. Teleporters get our own glowing pad, since the original's model isn't ours. Sounds come in with map objects instead of waiting for guns. |
 | Server movement | Agreed 2026-11-08. Each server owns its movement settings, and only its host (or admins they name) can change them. A change is announced to everyone at once and takes effect at the next round. The announcement carries a picture the game draws itself: a jump run with the old numbers and the new, both arcs drawn, plus the old and new values. Servers with changed movement get a badge and a one-line summary, like "low gravity, fast run", in the server list. |
 | Lighting | Cheap. Each map's own baked light, plus small moving lights on energy rounds, muzzle flashes and explosions. |
 | Textures | Maps keep their look. High-res swapped in where names match, otherwise the original or a stand-in. A per-map file can override any of it. A switch flips between high-res and the originals (2026-11-24). Original textures stay smooth, as now, not pixelated. Skies are each map's own, and a high-res sky only swaps in if it's the original redrawn (2026-11-24). |
@@ -119,9 +120,14 @@ Each is about one session, and each ends in something you can run.
    originals, skies, `.override` files, and a map list at start with titles and authors. Sounds and
    models moved to the milestones that first use them (agreed 2026-11-24). Built 2026-11-24 in three
    sessions; Matthew's hand checks are in TODO.md.
-4. **Map objects.** Doors, lifts, buttons, teleporters, jump pads. Many maps depend on these.
+4. **Map objects.** Doors, lifts, buttons, trains, spinning things, teleporters, push zones, hurt zones,
+   and the triggers, timers and relays that set them off. Sounds are baked here, for doors, lifts,
+   teleporters and the maps' ambient sound spots (moved from milestone 5, agreed 2026-11-25). Objects
+   run inside the simulation at 60 ticks, so online play later needs no rewrite. Anything that needs
+   damage waits for milestone 5: buttons you shoot, walls that break, and crushing. Until then a blocked
+   door or lift backs off. Monsters in single-player maps are ignored.
 5. **Guns.** A few weapons, damage, knockback, recoil, energy round lights, pickups placed from the map's own item spots.
-   Sounds are baked here, since guns are the first thing to use them.
+   Also the map objects that need damage: buttons you shoot, walls that break, crushing, hurt zones.
 6. **Bots.** Paths generated at bake time, then a real deathmatch. This is the first full game. MD2 models
    are baked here, for the bots' bodies.
 7. **Online.** Split the server off properly, add prediction, play between the laptop and the desktop.

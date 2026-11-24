@@ -45,8 +45,39 @@ of its own, so the game and `start.cmd` look for it and for Godot further up (06
 - [ ] Matthew: try the map list by hand. Search, arrows, Enter, double-click, and Esc then "Map list"
       have only been run headless or by script, and the list's look only seen in one picture.
 
+## Milestone 4
+Agreed 2026-11-25. Three sessions: 4a and 4b side by side in worktrees, then 4c, which needs both.
+
+Out of 363 maps: lifts 163, doors 159 (plus 37 swinging, 36 secret), teleporters 136, buttons 94, touch
+triggers 92 (`trigger_multiple`) and 39 (`trigger_once`), trains 53, spinning things 48, timers 41, push
+zones 40, relays 24, hurt zones 23, `func_wall` 65, ambient sound spots (`target_speaker`) 191.
+
+4a, sounds:
+- [ ] Bake WAV sounds to our own format in `cache/sounds`, keyed like maps and textures.
+- [ ] Play sounds placed in the world, fading with distance as the map's `attenuation` says.
+- [ ] The maps' ambient sound spots (`target_speaker`): looping ones play from the start, triggered ones
+      wait for 4b's triggers.
+
+4b, triggers and teleporters:
+- [ ] The map object system in the simulation: names and targets, touch triggers (`trigger_multiple`,
+      `trigger_once`), `trigger_relay`, `trigger_counter`, `trigger_always`, `func_timer`, delays.
+- [ ] Teleporters (`misc_teleporter` to `misc_teleporter_dest`): keep speed, turned to face the exit
+      (Matthew). Our own glowing pad with a soft light (Matthew).
+- [ ] Push zones (`trigger_push`), keeping the map's speed and direction.
+- [ ] Hurt zones (`trigger_hurt`) found and marked, ready for damage in milestone 5.
+
+4c, moving things (after 4a and 4b):
+- [ ] Doors (`func_door`, `func_door_rotating`, `func_door_secret`), lifts (`func_plat`), trains
+      (`func_train` with `path_corner`), spinning things (`func_rotating`), buttons (`func_button`),
+      `func_wall` and `func_water`.
+- [ ] Players collide with them, ride them, and get pushed by them. A blocked door or lift backs off
+      until damage exists.
+- [ ] Jumping off a moving lift or train keeps its speed (Matthew).
+- [ ] Their sounds, from 4a.
+
 ## Milestone 5
-- [ ] Bake sounds (moved from milestone 3).
+- [ ] The map objects that need damage: buttons you shoot (`health` key), `func_explosive`, crushing
+      (`dmg` key), hurt zones.
 
 ## Milestone 6
 - [ ] Bake MD2 models (moved from milestone 3).

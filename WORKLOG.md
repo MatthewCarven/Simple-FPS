@@ -369,3 +369,12 @@ added for those pictures, and `--textures=original|highres` sets one run's textu
 The whole-collection texture test needed the .NET heap capped (`DOTNET_GCHeapHardLimit`) once, while the
 laptop was down to 0.4 GB of free memory with another project's game running; with 1.3 GB free the
 whole suite passed without it.
+
+## 2026-11-25: milestone 4 planned
+
+Counted the map objects in all 363 maps (table in TODO.md). Lifts, doors and teleporters lead, each in
+well over a third of them. Asked Matthew, and he took every recommendation: teleporters keep your speed,
+turned to face the exit; jumping off a moving lift or train keeps its speed; teleporters get our own
+glowing pad, since the original's model isn't in the content and isn't ours to ship; and sounds move from
+milestone 5 into milestone 4. Split into 4a sounds and 4b triggers and teleporters, side by side in
+worktrees, then 4c moving things, which needs both. Things that need damage wait for milestone 5.
