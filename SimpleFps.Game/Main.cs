@@ -21,7 +21,7 @@ namespace SimpleFps.Game;
 /// Entry scene: one map, with you in it. Game flags go after a bare "--":
 /// --map=name  --spawn=number  --shot=file.png (save a picture and quit)  --panel (open the
 /// tuning panel in that picture)  --textures=original|highres (for this run only, not saved)
-/// --smoke-test
+/// --pitch=degrees (start looking down, or up if negative)  --smoke-test
 /// </summary>
 public partial class Main : Node
 {
@@ -209,20 +209,21 @@ public partial class Main : Node
             (SysVector3 spawn, float yaw) = FindSpawn(map.Entities, spawnFlag);
             _player = new LocalPlayer();
             AddChild(_player);
-            _player.Begin(sim, spawn, yaw);
+            float pitch = float.TryParse(Flag(OS.GetCmdlineUserArgs(), "--pitch="), NumberStyles.Float, CultureInfo.InvariantCulture, out float wanted) ? wanted : 0f;
+            _player.Begin(sim, spawn, yaw, pitch);
 
             ulong taken = Time.GetTicksMsec() - started;
             _mapTitle = map.Info.Title is { } title ? $"{name}: {title}" : name;
             string from = baked ? "baked" : "loaded from cache";
             string set = textureSet == TextureSet.HighRes ? $"high-res ({textures.HighResCount} from the pack)" : "original";
-            GD.Print($"map {name}: {from} in {mapTaken} ms, {view.SurfaceCount} surfaces, {textures.LoadedCount} textures {set}, {textures.Missing.Count} missing, {textures.BakedCount} baked, textures and meshes {texturesTaken} ms, {taken} ms in all");
+            GD.Print($"map {name}: {from} in {mapTaken} ms, {view.SurfaceCount} surfaces, {textures.LoadedCount} textures {set}, {textures.Missing.Count} missing, {textures.BakedCount} baked, textures and meshes {texturesTaken} ms (bakes {textures.CacheTime.TotalMilliseconds:F0}, to Godot {textures.UploadTime.TotalMilliseconds:F0}), {taken} ms in all");
             GD.Print($"  sky {view.Sky.Name}: {view.SkySource ?? "pictures missing, flat colour"}{(view.Sky.Spins ? $", spinning {view.Sky.DegreesPerSecond} degrees a second" : "")}");
             foreach (string missing in textures.Missing)
             {
                 GD.Print($"  missing texture: {missing}");
             }
 
-            foreach (string problem in textures.Problems.Concat(textures.OddShapes))
+            foreach (string problem in textures.Problems.Concat(textures.OddShapes).Concat(textures.UnlikeSkies))
             {
                 GD.Print($"  {problem}");
             }

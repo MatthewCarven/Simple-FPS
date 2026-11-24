@@ -37,12 +37,12 @@ public sealed class TextureCacheTests : IDisposable
         return rgba;
     }
 
-    /// <summary>Six pictures, each a solid red of 10 times its side's number plus one.</summary>
-    private void AddSky(string folder, string name, string extension, int size = 8)
+    /// <summary>Six pictures, each a solid red of 10 times its side's number plus one, with the given green.</summary>
+    private void AddSky(string folder, string name, string extension, int size = 8, byte green = 0)
     {
         for (int side = 0; side < 6; side++)
         {
-            byte[] rgba = Enumerable.Range(0, size * size).SelectMany(_ => new byte[] { (byte)(10 * (side + 1)), 0, 0, 255 }).ToArray();
+            byte[] rgba = Enumerable.Range(0, size * size).SelectMany(_ => new byte[] { (byte)(10 * (side + 1)), green, 0, 255 }).ToArray();
             byte[] file = extension switch
             {
                 ".tga" => TinyImages.Tga(size, size, rgba),
@@ -248,20 +248,53 @@ public sealed class TextureCacheTests : IDisposable
         Assert.Null(NewCache().Sky("holes", TextureSet.Original).Texture);
     }
 
+    private static string Pack => Path.Combine("q2textures-master", "pak96_env", "env");
+
     [Fact]
     public void AHighResSkyComesFromThePackAndOnlyWithAllSixSides()
     {
-        string pack = Path.Combine("q2textures-master", "pak96_env", "env");
-        AddSky(pack, "unit1_", ".png", size: 16);
-        AddSky(pack, "half", ".png");
-        File.Delete(Path.Combine(Content, pack, "halfup.png"));
+        AddSky("env", "night1", ".tga");
+        AddSky(Pack, "night1", ".png", size: 16, green: 3);
+        AddSky("env", "half", ".tga");
+        AddSky(Pack, "half", ".png");
+        File.Delete(Path.Combine(Content, Pack, "halfup.png"));
 
-        BakedTexture? sky = NewCache().Sky("unit1_", TextureSet.HighRes).Texture;
+        (BakedTexture? sky, bool baked) = NewCache().Sky("night1", TextureSet.HighRes);
 
+        Assert.True(baked);
         Assert.Equal(16, sky!.Width);
-        Assert.Equal("q2textures-master/pak96_env/env/unit1_*.png", sky.Source);
+        Assert.Equal("q2textures-master/pak96_env/env/night1*.png", sky.Source);
+        Assert.Equal(3, sky.Images[0].Rgba[1]);
+        Assert.False(NewCache().Sky("night1", TextureSet.HighRes).Baked);
         Assert.Null(NewCache().Sky("half", TextureSet.HighRes).Texture);
-        Assert.Null(NewCache().Sky("unit1_", TextureSet.Original).Texture);
+    }
+
+    [Fact]
+    public void APackSkyThatIsADifferentPictureIsLeftOutAndRemembered()
+    {
+        AddSky("env", "unit1_", ".tga");
+        AddSky(Pack, "unit1_", ".png", green: 200);
+        TextureCache first = NewCache();
+        TextureCache second = NewCache();
+
+        (BakedTexture? sky, bool baked) = first.Sky("unit1_", TextureSet.HighRes);
+        (BakedTexture? again, bool bakedAgain) = second.Sky("unit1_", TextureSet.HighRes);
+
+        Assert.Null(sky);
+        Assert.Null(again);
+        Assert.True(baked);
+        Assert.False(bakedAgain);
+        Assert.Contains("differs from the original by 67 on average", Assert.Single(first.UnlikeSkies));
+        Assert.Single(second.UnlikeSkies);
+        Assert.NotNull(NewCache().Sky("unit1_", TextureSet.Original).Texture);
+    }
+
+    [Fact]
+    public void APackSkyWithNoOriginalToMatchIsNotUsed()
+    {
+        AddSky(Pack, "lonely", ".png");
+
+        Assert.Null(NewCache().Sky("lonely", TextureSet.HighRes).Texture);
     }
 
     [Fact]

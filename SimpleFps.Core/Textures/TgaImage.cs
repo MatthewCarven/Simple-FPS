@@ -11,6 +11,7 @@ public static class TgaImage
     private const int HeaderLength = 18;
     private const int TopToBottom = 0x20;
     private const int RightToLeft = 0x10;
+    private const int AlphaBitsMask = 0x0F;
 
     /// <exception cref="InvalidDataException">It isn't a Targa file this can read, or it's damaged.</exception>
     public static RgbaImage Decode(ReadOnlySpan<byte> data)
@@ -30,6 +31,9 @@ public static class TgaImage
         int height = BinaryPrimitives.ReadUInt16LittleEndian(data[14..]);
         int pixelBits = data[16];
         int descriptor = data[17];
+
+        // 32-bit pixels only carry alpha if the header says so. Some sky files leave junk there.
+        bool alpha = (descriptor & AlphaBitsMask) != 0;
 
         RgbaImage.CheckSize(width, height, "Targa");
         bool packed = imageType is 9 or 10 or 11;
@@ -53,7 +57,7 @@ public static class TgaImage
             map = new byte[(mapFirst + mapLength) * 4];
             for (int i = 0; i < mapLength; i++)
             {
-                ReadColour(data.Slice(at + i * entryBytes, entryBytes), mapEntryBits, map.AsSpan((mapFirst + i) * 4, 4));
+                ReadColour(data.Slice(at + i * entryBytes, entryBytes), mapEntryBits, alpha, map.AsSpan((mapFirst + i) * 4, 4));
             }
 
             at += mapBytes;
@@ -96,7 +100,7 @@ public static class TgaImage
                         map.AsSpan(from[0] * 4, 4).CopyTo(to);
                         break;
                     case 2:
-                        ReadColour(from, pixelBits, to);
+                        ReadColour(from, pixelBits, alpha, to);
                         break;
                     default:
                         to[0] = to[1] = to[2] = from[0];
@@ -110,7 +114,7 @@ public static class TgaImage
     }
 
     /// <summary>Targa stores blue first. 16-bit colours are five bits a channel, with the top bit unused here.</summary>
-    private static void ReadColour(ReadOnlySpan<byte> from, int bits, Span<byte> to)
+    private static void ReadColour(ReadOnlySpan<byte> from, int bits, bool alpha, Span<byte> to)
     {
         switch (bits)
         {
@@ -130,7 +134,7 @@ public static class TgaImage
                 to[0] = from[2];
                 to[1] = from[1];
                 to[2] = from[0];
-                to[3] = bits == 32 ? from[3] : (byte)255;
+                to[3] = bits == 32 && alpha ? from[3] : (byte)255;
                 break;
             default:
                 throw new InvalidDataException($"Targa colours of {bits} bits aren't supported.");
@@ -147,7 +151,11 @@ public static class TgaImage
         return data[..byteCount].ToArray();
     }
 
-    /// <summary>Each packet is a count byte: top bit set means one pixel repeated, clear means that many stored pixels.</summary>
+    /// <summary>
+    /// Each packet is a count byte: top bit set means one pixel repeated, clear means that many stored
+    /// pixels. A packet running past the end of the picture means the file is damaged: four sky
+    /// files in content/env lost bytes that way and decode to streaks if it's let through.
+    /// </summary>
     private static byte[] Unpack(ReadOnlySpan<byte> data, int pixelCount, int pixelBytes)
     {
         var stored = new byte[pixelCount * pixelBytes];
@@ -162,7 +170,11 @@ public static class TgaImage
 
             int header = data[from++];
             int count = (header & 0x7F) + 1;
-            int bytes = Math.Min(count * pixelBytes, stored.Length - to);
+            int bytes = count * pixelBytes;
+            if (bytes > stored.Length - to)
+            {
+                throw new InvalidDataException("A Targa packet runs past the end of the picture.");
+            }
             if ((header & 0x80) != 0)
             {
                 if (from + pixelBytes > data.Length)

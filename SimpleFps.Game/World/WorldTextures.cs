@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using Godot;
 using SimpleFps.Core.Bake;
@@ -17,6 +18,8 @@ public sealed class WorldTextures
     private const int StandInSquare = 16;
 
     private readonly TextureCache _cache;
+    private readonly Stopwatch _cacheClock = new();
+    private readonly Stopwatch _uploadClock = new();
     private readonly Dictionary<(string, TextureSet), (Texture2D Texture, Vector2 Size)?> _walls = new();
     private readonly Dictionary<(string, TextureSet), (Cubemap Box, string Source)?> _skies = new();
     private readonly HashSet<string> _asked = new();
@@ -45,9 +48,17 @@ public sealed class WorldTextures
     /// <summary>Textures and skies that had to be baked rather than read from the cache.</summary>
     public int BakedCount { get; private set; }
 
+    /// <summary>Time spent reading bakes and hashing their source files, baking included.</summary>
+    public TimeSpan CacheTime => _cacheClock.Elapsed;
+
+    /// <summary>Time spent handing pictures to Godot.</summary>
+    public TimeSpan UploadTime => _uploadClock.Elapsed;
+
     public IReadOnlyList<string> Problems => _cache.Problems;
 
     public IReadOnlyList<string> OddShapes => _cache.OddShapes;
+
+    public IReadOnlyList<string> UnlikeSkies => _cache.UnlikeSkies;
 
     /// <summary>The texture for a name in the current set, and the size its texture coordinates are measured in.</summary>
     public (Texture2D Texture, Vector2 Size) Get(string name)
@@ -92,12 +103,16 @@ public sealed class WorldTextures
         (Texture2D, Vector2)? result = null;
         try
         {
+            _cacheClock.Start();
             (BakedTexture? baked, bool fresh) = _cache.Wall(name, set);
+            _cacheClock.Stop();
             if (baked is not null)
             {
+                _uploadClock.Start();
                 BakedImage image = baked.Images[0];
                 Image picture = Image.CreateFromData(image.Width, image.Height, image.Levels > 1, Image.Format.Rgba8, image.Rgba);
                 result = (ImageTexture.CreateFromImage(picture), new Vector2(baked.Width, baked.Height));
+                _uploadClock.Stop();
                 BakedCount += fresh ? 1 : 0;
                 if (set == TextureSet.HighRes)
                 {
@@ -107,6 +122,8 @@ public sealed class WorldTextures
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
+            _cacheClock.Stop();
+            _uploadClock.Stop();
             GD.PrintErr($"Couldn't load texture {name}: {e.Message}");
         }
 
@@ -124,9 +141,12 @@ public sealed class WorldTextures
         (Cubemap, string)? result = null;
         try
         {
+            _cacheClock.Start();
             (BakedTexture? baked, bool fresh) = _cache.Sky(name, set);
+            _cacheClock.Stop();
             if (baked is not null)
             {
+                _uploadClock.Start();
                 var faces = new Godot.Collections.Array<Image>();
                 foreach (BakedImage face in baked.Images)
                 {
@@ -136,11 +156,14 @@ public sealed class WorldTextures
                 var box = new Cubemap();
                 box.CreateFromImages(faces);
                 result = (box, baked.Source);
+                _uploadClock.Stop();
                 BakedCount += fresh ? 1 : 0;
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
+            _cacheClock.Stop();
+            _uploadClock.Stop();
             GD.PrintErr($"Couldn't load sky {name}: {e.Message}");
         }
 

@@ -24,11 +24,9 @@ public sealed class TextureCache(string contentFolder, string cacheFolder)
     public const string TextureExtension = ".tex";
     public const string SkyExtension = ".sky";
 
-    private const string WalExtension = ".wal";
     private const string PngExtension = ".png";
     private static readonly string[] SkyExtensions = [".tga", ".pcx"];
 
-    private readonly string _walFolder = Path.Combine(contentFolder, "textures");
     private readonly string _paletteFile = Path.Combine(contentFolder, "palette.act");
     private readonly string _highResFolder = Path.Combine(contentFolder, "q2textures-master", "pak99_textures", "textures");
     private readonly string _skyFolder = Path.Combine(contentFolder, "env");
@@ -41,6 +39,9 @@ public sealed class TextureCache(string contentFolder, string cacheFolder)
 
     /// <summary>High-res pictures left out because their shape isn't the .wal's, so they'd come out stretched.</summary>
     public List<string> OddShapes { get; } = [];
+
+    /// <summary>The pack's skies left out because they're different pictures, not the originals redrawn.</summary>
+    public List<string> UnlikeSkies { get; } = [];
 
     /// <summary>
     /// A wall texture by the name a map asks for. Null if there's no .wal for it, or, for the
@@ -61,7 +62,8 @@ public sealed class TextureCache(string contentFolder, string cacheFolder)
 
     /// <summary>
     /// A sky by the name a map gives in its <c>sky</c> key, as six cube map faces. Null if any of its
-    /// six pictures is missing or unreadable, or, for the high-res set, if the pack has no full set.
+    /// six pictures is missing or unreadable, or, for the high-res set, if the pack has no full set
+    /// or its sky is a different picture from the original.
     /// </summary>
     /// <exception cref="IOException">A file exists but can't be read.</exception>
     public (BakedTexture? Texture, bool Baked) Sky(string name, TextureSet set) =>
@@ -143,12 +145,116 @@ public sealed class TextureCache(string contentFolder, string cacheFolder)
     /// <summary>The .tga for each side, or the .pcx where there's no .tga or it won't read.</summary>
     private (BakedTexture?, bool) OriginalSky(string name)
     {
+        if (OriginalSkyFiles(name) is not { } files)
+        {
+            return (null, false);
+        }
+
+        string hash = Hash(files.Parts);
+        string bakePath = BakePath("skies", TextureSet.Original, name, SkyExtension);
+        if (TryRead(bakePath, hash, name) is { } cached)
+        {
+            return (cached, false);
+        }
+
+        if (DecodeOriginalSky(files.Candidates) is not { } decoded)
+        {
+            return (null, false);
+        }
+
+        string source = $"{Relative(Path.Combine(_skyFolder, name))}*{decoded.Extensions}";
+        return (Save(bakePath, Cube(name, hash, source, decoded.Pictures)), true);
+    }
+
+    /// <summary>
+    /// The pack's sky, but only where it's the original redrawn: <see cref="SkyBox.Difference"/>
+    /// under <see cref="SkyBox.SamePictureLimit"/>. A sky that's a different picture is baked as an
+    /// empty file, so the comparison isn't made again on every load.
+    /// </summary>
+    private (BakedTexture?, bool) HighResSky(string name)
+    {
         if (!SafePath.IsRelative(name))
         {
             return (null, false);
         }
 
-        // Every candidate goes into the hash, so a cached sky still knows which file each side used.
+        string[] paths = SkyBox.Sides.Select(side => Path.Combine(_highResSkyFolder, name + side + PngExtension)).ToArray();
+        if (!paths.All(File.Exists) || OriginalSkyFiles(name) is not { } original)
+        {
+            return (null, false);
+        }
+
+        // The original's files are part of the key, since whether the pack's sky is used depends on them.
+        byte[][] files = paths.Select(File.ReadAllBytes).ToArray();
+        string hash = Hash(files.Concat(original.Parts));
+        string bakePath = BakePath("skies", TextureSet.HighRes, name, SkyExtension);
+        if (TryRead(bakePath, hash, name) is { } cached)
+        {
+            return Usable(cached, baked: false);
+        }
+
+        var pictures = new RgbaImage[files.Length];
+        for (int side = 0; side < files.Length; side++)
+        {
+            try
+            {
+                pictures[side] = PngImage.Decode(files[side]);
+            }
+            catch (InvalidDataException e)
+            {
+                Problems.Add($"{Relative(paths[side])}: {e.Message}");
+                return (null, false);
+            }
+        }
+
+        if (DecodeOriginalSky(original.Candidates) is not { } decoded)
+        {
+            return (null, false);
+        }
+
+        string pack = Relative(Path.Combine(_highResSkyFolder, name)) + "*.png";
+        double difference = SkyBox.Difference(pictures, decoded.Pictures);
+        if (difference > SkyBox.SamePictureLimit)
+        {
+            var notUsed = new BakedTexture
+            {
+                Name = name,
+                Hash = hash,
+                Source = $"{pack} differs from the original by {difference:F0} on average, so it isn't used",
+                Width = 0,
+                Height = 0,
+                Images = [],
+            };
+            return Usable(Save(bakePath, notUsed), baked: true);
+        }
+
+        return (Save(bakePath, Cube(name, hash, pack, pictures)), true);
+    }
+
+    /// <summary>An empty high-res sky bake means the pack's picture isn't the original's.</summary>
+    private (BakedTexture?, bool) Usable(BakedTexture sky, bool baked)
+    {
+        if (sky.Images.Count > 0)
+        {
+            return (sky, baked);
+        }
+
+        UnlikeSkies.Add($"{sky.Name}: {sky.Source}");
+        return (null, baked);
+    }
+
+    /// <summary>
+    /// Every .tga and .pcx there is for each side, read but not decoded, and the parts of the key
+    /// they make. Null if a side has neither.
+    /// </summary>
+    private (List<byte[]> Parts, List<(string Path, byte[] Bytes)>[] Candidates)? OriginalSkyFiles(string name)
+    {
+        if (!SafePath.IsRelative(name))
+        {
+            return null;
+        }
+
+        // Every candidate goes into the key, so a cached sky still knows which file each side used.
         var parts = new List<byte[]>();
         var candidates = new List<(string Path, byte[] Bytes)>[SkyBox.Sides.Count];
         for (int side = 0; side < SkyBox.Sides.Count; side++)
@@ -168,18 +274,17 @@ public sealed class TextureCache(string contentFolder, string cacheFolder)
 
             if (candidates[side].Count == 0)
             {
-                return (null, false);
+                return null;
             }
         }
 
-        string hash = Hash(parts);
-        string bakePath = BakePath("skies", TextureSet.Original, name, SkyExtension);
-        if (TryRead(bakePath, hash, name) is { } cached)
-        {
-            return (cached, false);
-        }
+        return (parts, candidates);
+    }
 
-        var pictures = new RgbaImage[SkyBox.Sides.Count];
+    /// <summary>Decodes each side from the first of its files that reads, or returns null if one has none.</summary>
+    private (RgbaImage[] Pictures, string Extensions)? DecodeOriginalSky(List<(string Path, byte[] Bytes)>[] candidates)
+    {
+        var pictures = new RgbaImage[candidates.Length];
         var used = new List<string>();
         for (int side = 0; side < pictures.Length; side++)
         {
@@ -199,50 +304,11 @@ public sealed class TextureCache(string contentFolder, string cacheFolder)
 
             if (pictures[side] is null)
             {
-                return (null, false);
+                return null;
             }
         }
 
-        string source = $"{Relative(Path.Combine(_skyFolder, name))}*{string.Join(" and ", used.Distinct().OrderBy(e => e != ".tga"))}";
-        return (Save(bakePath, Cube(name, hash, source, pictures)), true);
-    }
-
-    private (BakedTexture?, bool) HighResSky(string name)
-    {
-        if (!SafePath.IsRelative(name))
-        {
-            return (null, false);
-        }
-
-        string[] paths = SkyBox.Sides.Select(side => Path.Combine(_highResSkyFolder, name + side + PngExtension)).ToArray();
-        if (!paths.All(File.Exists))
-        {
-            return (null, false);
-        }
-
-        byte[][] files = paths.Select(File.ReadAllBytes).ToArray();
-        string hash = Hash(files);
-        string bakePath = BakePath("skies", TextureSet.HighRes, name, SkyExtension);
-        if (TryRead(bakePath, hash, name) is { } cached)
-        {
-            return (cached, false);
-        }
-
-        var pictures = new RgbaImage[files.Length];
-        for (int side = 0; side < files.Length; side++)
-        {
-            try
-            {
-                pictures[side] = PngImage.Decode(files[side]);
-            }
-            catch (InvalidDataException e)
-            {
-                Problems.Add($"{Relative(paths[side])}: {e.Message}");
-                return (null, false);
-            }
-        }
-
-        return (Save(bakePath, Cube(name, hash, Relative(Path.Combine(_highResSkyFolder, name)) + "*.png", pictures)), true);
+        return (pictures, string.Join(" and ", used.Distinct().OrderBy(e => e != ".tga")));
     }
 
     private static BakedTexture Mipmapped(string name, string hash, string source, int width, int height, RgbaImage image) => new()

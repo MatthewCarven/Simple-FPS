@@ -126,7 +126,8 @@ internal static class TinyImages
     }
 
     /// <summary>A Targa header followed by whatever else is given: colour map, then picture data.</summary>
-    public static byte[] Tga(int imageType, int width, int height, int pixelBits, bool topFirst, byte[] body, int mapLength = 0, int mapBits = 0)
+    public static byte[] Tga(
+        int imageType, int width, int height, int pixelBits, bool topFirst, byte[] body, int mapLength = 0, int mapBits = 0, int alphaBits = 0)
     {
         var header = new byte[18];
         header[1] = (byte)(mapLength > 0 ? 1 : 0);
@@ -136,7 +137,7 @@ internal static class TinyImages
         BinaryPrimitives.WriteUInt16LittleEndian(header.AsSpan(12), (ushort)width);
         BinaryPrimitives.WriteUInt16LittleEndian(header.AsSpan(14), (ushort)height);
         header[16] = (byte)pixelBits;
-        header[17] = (byte)(topFirst ? 0x20 : 0);
+        header[17] = (byte)((topFirst ? 0x20 : 0) | alphaBits);
         return [.. header, .. body];
     }
 

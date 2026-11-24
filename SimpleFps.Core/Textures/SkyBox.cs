@@ -112,6 +112,74 @@ public static class SkyBox
         return faces;
     }
 
+    /// <summary>
+    /// Two skies that differ by more than this are different pictures, not one redrawn at a higher
+    /// resolution. Measured by <see cref="Difference"/>: the pack's night1 differs from the original
+    /// by about 1, while its unit1_ to unit9_, one mountain range in two tints, differ from Quake 2's
+    /// red skies by 91 to 100.
+    /// </summary>
+    public const double SamePictureLimit = 32;
+
+    private const int ThumbnailSize = 16;
+
+    /// <summary>
+    /// How different two skies look: each side shrunk to 16 x 16 by averaging, then the mean change
+    /// in red, green and blue (0 to 255) between the two, over all six sides. Both are in
+    /// <see cref="Sides"/> order.
+    /// </summary>
+    public static double Difference(IReadOnlyList<RgbaImage> a, IReadOnlyList<RgbaImage> b)
+    {
+        double total = 0;
+        for (int side = 0; side < Sides.Count; side++)
+        {
+            double[] ta = Thumbnail(a[side]);
+            double[] tb = Thumbnail(b[side]);
+            for (int i = 0; i < ta.Length; i++)
+            {
+                total += Math.Abs(ta[i] - tb[i]);
+            }
+        }
+
+        return total / (Sides.Count * ThumbnailSize * ThumbnailSize * 3);
+    }
+
+    /// <summary>
+    /// Red, green and blue averaged over each cell of a 16 x 16 grid laid over the picture. A picture
+    /// under 16 pixels across gives each of its pixels to several cells.
+    /// </summary>
+    private static double[] Thumbnail(RgbaImage picture)
+    {
+        var cells = new double[ThumbnailSize * ThumbnailSize * 3];
+        for (int cy = 0; cy < ThumbnailSize; cy++)
+        {
+            int y0 = cy * picture.Height / ThumbnailSize;
+            int y1 = Math.Max(y0 + 1, (cy + 1) * picture.Height / ThumbnailSize);
+            for (int cx = 0; cx < ThumbnailSize; cx++)
+            {
+                int x0 = cx * picture.Width / ThumbnailSize;
+                int x1 = Math.Max(x0 + 1, (cx + 1) * picture.Width / ThumbnailSize);
+                int cell = (cy * ThumbnailSize + cx) * 3;
+                for (int y = y0; y < y1; y++)
+                {
+                    for (int x = x0; x < x1; x++)
+                    {
+                        int at = (y * picture.Width + x) * 4;
+                        cells[cell] += picture.Pixels[at];
+                        cells[cell + 1] += picture.Pixels[at + 1];
+                        cells[cell + 2] += picture.Pixels[at + 2];
+                    }
+                }
+
+                int count = (y1 - y0) * (x1 - x0);
+                cells[cell] /= count;
+                cells[cell + 1] /= count;
+                cells[cell + 2] /= count;
+            }
+        }
+
+        return cells;
+    }
+
     /// <summary>Blends the four nearest pixels, keeping to the picture's own edges.</summary>
     private static void SampleInto(RgbaImage picture, float u, float v, Span<byte> to)
     {

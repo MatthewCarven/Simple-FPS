@@ -59,12 +59,14 @@ public partial class LocalPlayer : Node
         }
     }
 
-    public void Begin(Simulation sim, SysVector3 spawn, float yaw)
+    /// <param name="pitch">Degrees to start looking down, or up if negative, as in the original game.</param>
+    public void Begin(Simulation sim, SysVector3 spawn, float yaw, float pitch = 0f)
     {
         _sim = sim;
         _spawn = spawn;
         _spawnYaw = yaw;
         _yaw = yaw;
+        _pitch = Mathf.Clamp(pitch, -PitchLimit, PitchLimit);
         sim.AddPlayer(spawn);
         _before = _after = sim.Players[PlayerIndex];
         AddChild(_camera);

@@ -145,6 +145,18 @@ public class SkyBoxTests
     }
 
     [Fact]
+    public void TheDifferenceBetweenSkiesIsTheirThumbnailsAverageChange()
+    {
+        RgbaImage[] dark = Enumerable.Range(0, 6).Select(_ => Solid(32, 0)).ToArray();
+        RgbaImage[] red = Enumerable.Range(0, 6).Select(_ => Solid(8, 255)).ToArray();
+
+        Assert.Equal(0, SkyBox.Difference(dark, dark));
+
+        // Only red changes, by 255, so the mean over red, green and blue is 85, whatever the sizes.
+        Assert.Equal(85, SkyBox.Difference(dark, red), 6);
+    }
+
+    [Fact]
     public void AMapWithNoSkyGetsTheDefaultAndNoSpin()
     {
         MapSky sky = MapSky.From(BspEntity.Parse("{ \"classname\" \"worldspawn\" }"));

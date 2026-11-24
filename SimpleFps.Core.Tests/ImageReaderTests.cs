@@ -121,11 +121,13 @@ public class ImageReaderTests
     }
 
     [Fact]
-    public void Tga32BitKeepsItsAlpha()
+    public void Tga32BitKeepsItsAlphaOnlyIfTheHeaderSaysItHasSome()
     {
-        RgbaImage image = TgaImage.Decode(TinyImages.Tga(2, 1, 1, 32, topFirst: true, [3, 2, 1, 77]));
+        RgbaImage withAlpha = TgaImage.Decode(TinyImages.Tga(2, 1, 1, 32, topFirst: true, [3, 2, 1, 77], alphaBits: 8));
+        RgbaImage without = TgaImage.Decode(TinyImages.Tga(2, 1, 1, 32, topFirst: true, [3, 2, 1, 77]));
 
-        Assert.Equal(new byte[] { 1, 2, 3, 77 }, image.Pixels);
+        Assert.Equal(new byte[] { 1, 2, 3, 77 }, withAlpha.Pixels);
+        Assert.Equal(new byte[] { 1, 2, 3, 255 }, without.Pixels);
     }
 
     [Fact]
@@ -163,6 +165,8 @@ public class ImageReaderTests
     {
         Assert.Throws<InvalidDataException>(() => TgaImage.Decode(TinyImages.Tga(2, 2, 2, 24, topFirst: true, new byte[11])));
         Assert.Throws<InvalidDataException>(() => TgaImage.Decode(TinyImages.Tga(10, 4, 1, 24, topFirst: true, [0x83, 1, 2])));
+        Assert.Throws<InvalidDataException>(() => TgaImage.Decode(TinyImages.Tga(10, 2, 1, 24, topFirst: true, [0x82, 1, 2, 3])));
+        Assert.Throws<InvalidDataException>(() => TgaImage.Decode(TinyImages.Tga(10, 2, 1, 24, topFirst: true, [0x02, 1, 2, 3, 4, 5, 6, 7, 8, 9])));
         Assert.Throws<InvalidDataException>(() => TgaImage.Decode(TinyImages.Tga(2, 0, 1, 24, topFirst: true, [])));
         Assert.Throws<InvalidDataException>(() => TgaImage.Decode(TinyImages.Tga(4, 1, 1, 24, topFirst: true, [1, 2, 3])));
         Assert.Throws<InvalidDataException>(() => TgaImage.Decode(new byte[10]));

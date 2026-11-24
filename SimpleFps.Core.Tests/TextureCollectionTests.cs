@@ -19,9 +19,10 @@ public class TextureCollectionTests(ITestOutputHelper output)
     private static bool JoinsUp(double across, double inside) => across <= inside * 1.5 + 3;
 
     /// <summary>
-    /// Some skies don't join because of their pictures, not their layout: in 2026-11 a collage made
-    /// not to (teehee_), a bottom that doesn't match its walls (hell1), damaged .tga files
-    /// (mountainlakes). A layout mistake would break nearly every sky, so a few are allowed.
+    /// Some skies don't join because of their pictures, not their layout. In 2026-11 that's 3 of 246:
+    /// a collage made not to (teehee_), a bottom that doesn't match its walls (hell1), and a busy
+    /// ground that changes a lot from pixel to pixel (city_). A layout mistake would break nearly
+    /// every sky, so a few are allowed.
     /// </summary>
     private const double AllowedRoughShare = 0.05;
 
@@ -227,6 +228,12 @@ public class TextureCollectionTests(ITestOutputHelper output)
             }
 
             output.WriteLine($"{skies.Count} skies in all: {found.Count} baked from env, {highRes} from the pack, in {clock.Elapsed.TotalSeconds:F1} s");
+            output.WriteLine($"{cache.UnlikeSkies.Count} of the pack's skies aren't used, being different pictures from the originals:");
+            foreach (string line in cache.UnlikeSkies)
+            {
+                output.WriteLine($"  {line}");
+            }
+
             double medianRatio = seams.Select(s => s.Across / Math.Max(s.Inside, 0.5)).Order().ElementAt(seams.Count / 2);
             output.WriteLine($"{rough.Count} of {seams.Count} sky boxes don't join; across their edges they change {medianRatio:F2} times as much as inside, at the median:");
             foreach (string line in rough.Concat(cache.Problems).Concat(failures))
