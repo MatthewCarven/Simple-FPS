@@ -148,7 +148,7 @@ public partial class LocalPlayer : Node
         {
             if (e.Kind == MapEventKind.Pushed && e.Player == PlayerIndex)
             {
-                GD.Print($"pushed: velocity {_after.Velocity} from {_after.Position}");
+                GD.Print($"pushed: velocity {_after.Velocity} from {_after.Position}, {(_after.Crouched ? "crouched" : "standing")}, {(_after.OnGround ? "on the ground" : "in the air")}");
             }
 
             MapEventHappened?.Invoke(e);
