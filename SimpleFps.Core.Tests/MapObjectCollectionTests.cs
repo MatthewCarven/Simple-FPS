@@ -31,7 +31,7 @@ public class MapObjectCollectionTests(ITestOutputHelper output)
         var found = new Findings();
         var classMaps = new Dictionary<string, int>(StringComparer.Ordinal);
         var unhandledMaps = new Dictionary<string, int>(StringComparer.Ordinal);
-        int mapCount = 0, teleporters = 0, pushes = 0, hurts = 0, leftOut = 0, problems = 0, fired = 0;
+        int mapCount = 0, teleporters = 0, pushes = 0, pads = 0, padFloors = 0, hurts = 0, leftOut = 0, problems = 0, fired = 0;
         float fastestPush = 0;
 
         foreach (string name in cache.Names())
@@ -60,6 +60,8 @@ public class MapObjectCollectionTests(ITestOutputHelper output)
                 }
 
                 pushes += objects.PushZones.Count;
+                pads += objects.PushZones.Count(p => p.Lifts);
+                padFloors += objects.PushZones.Count(p => p.Floor is { } f && f <= p.Volume.Max.Z);
                 hurts += objects.HurtZones.Count;
                 foreach (PushZone push in objects.PushZones)
                 {
@@ -81,7 +83,7 @@ public class MapObjectCollectionTests(ITestOutputHelper output)
             }
         }
 
-        output.WriteLine($"{mapCount} maps, {teleporters} teleporters, {pushes} push zones (fastest {fastestPush:F0}), {hurts} hurt zones, {leftOut} entities left out as not for deathmatch");
+        output.WriteLine($"{mapCount} maps, {teleporters} teleporters, {pushes} push zones (fastest {fastestPush:F0}; {pads} jump pads, {padFloors} with their floor found), {hurts} hurt zones, {leftOut} entities left out as not for deathmatch");
         output.WriteLine($"maps with each object: {string.Join(", ", classMaps.OrderByDescending(c => c.Value).Select(c => $"{c.Key} {c.Value}"))}");
         output.WriteLine($"most common not handled yet, by maps: {string.Join(", ", unhandledMaps.OrderByDescending(c => c.Value).Take(25).Select(c => $"{c.Key} {c.Value}"))}");
         output.WriteLine($"after touching every trigger and running {TicksToRun} ticks: {fired} events, {problems} problems listed");

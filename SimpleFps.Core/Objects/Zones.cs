@@ -72,11 +72,12 @@ public sealed class Teleporter : TouchObject
 /// Flag 1 makes it work once and then go.
 /// </summary>
 /// <remarks>
-/// A jump pad, one that pushes mostly upward, lets you fall through it (Matthew, 2026-11-25). It
-/// throws you up when you land on it or rise into it, and keeps lifting you while you rise, so
-/// launches are as the map intends. The original caught you while falling too, and
-/// <see cref="MoveSettings.PadsCatchFalling"/> brings that back. Sideways and downward pushes
-/// catch you either way.
+/// A jump pad, one that pushes mostly upward, throws you only from its own floor, or while you're
+/// moving up through it, which keeps it lifting you once it has launched you (Matthew,
+/// 2026-11-25). So you can fall through one in mid-air, land on its floor and be thrown back up,
+/// and a ledge at its edge doesn't throw you just for touching it. The original acted on anyone
+/// touching it, and <see cref="MoveSettings.OriginalJumpPads"/> brings that back. Sideways and
+/// downward pushes act on anyone touching them either way.
 /// </remarks>
 public sealed class PushZone : TouchObject
 {
@@ -115,9 +116,32 @@ public sealed class PushZone : TouchObject
     /// <summary>A jump pad: it pushes mostly upward.</summary>
     public bool Lifts => Velocity.Z > MathF.Abs(Speed) * LiftingZ;
 
+    /// <summary>
+    /// A jump pad's own floor: the highest ground found under it as the map loads. Null if none was
+    /// found, or it isn't a jump pad, and then standing on any ground in it counts.
+    /// </summary>
+    public float? Floor { get; internal set; }
+
+    /// <summary>Whether a jump pad throws this player: standing on its own floor, or moving up through it.</summary>
+    public bool Throws(in PlayerState s, MoveSettings settings)
+    {
+        if (!Lifts || settings.OriginalJumpPads)
+        {
+            return true;
+        }
+
+        if (!s.OnGround)
+        {
+            // Rising, not level: on the tick you step off an edge you're in the air with no fall speed yet.
+            return s.Velocity.Z > 0;
+        }
+
+        return Floor is not { } floor || s.Position.Z + PlayerHull.Bottom <= floor + settings.StepHeight;
+    }
+
     internal override void Touch(MapObjects map, int player, ref PlayerState s, in MoveCommand cmd, MoveSettings settings)
     {
-        if (Lifts && !settings.PadsCatchFalling && !s.OnGround && s.Velocity.Z < 0)
+        if (!Throws(s, settings))
         {
             return;
         }

@@ -45,11 +45,11 @@ public sealed class MoveSettings
     public bool AllowCrouchJump { get; set; }
 
     /// <summary>
-    /// Lets a jump pad catch you while you're falling into it, as the original game did. Off since
-    /// Matthew tried it (2026-11-25): a pad throws you up when you land on it or rise into it, and
-    /// you can fall past one in mid-air.
+    /// Jump pads act on anyone touching them, as in the original game: they catch you as you fall
+    /// into them, and throw you from a ledge at their edge. Off since Matthew tried it (2026-11-25):
+    /// a pad throws you up from its own floor, or while you're moving up through it.
     /// </summary>
-    public bool PadsCatchFalling { get; set; }
+    public bool OriginalJumpPads { get; set; }
 
     /// <summary>Recoil can't push you past this speed in the direction it's pushing.</summary>
     public float RecoilTopSpeed { get; set; } = 700f;

@@ -58,8 +58,8 @@ public partial class TuningPanel : CanvasLayer
         _crouchJump.Toggled += on => _settings.AllowCrouchJump = on;
         rows.AddChild(_crouchJump);
 
-        _padsCatch = new CheckBox { Text = "Jump pads catch you as you fall", ButtonPressed = settings.PadsCatchFalling };
-        _padsCatch.Toggled += on => _settings.PadsCatchFalling = on;
+        _padsCatch = new CheckBox { Text = "Jump pads as in the original: catch you anywhere", ButtonPressed = settings.OriginalJumpPads };
+        _padsCatch.Toggled += on => _settings.OriginalJumpPads = on;
         rows.AddChild(_padsCatch);
 
         var reset = new Button { Text = "Reset all to defaults" };
@@ -112,7 +112,7 @@ public partial class TuningPanel : CanvasLayer
 
         _settings.AllowCrouchJump = _defaults.AllowCrouchJump;
         _crouchJump.SetPressedNoSignal(_defaults.AllowCrouchJump);
-        _settings.PadsCatchFalling = _defaults.PadsCatchFalling;
-        _padsCatch.SetPressedNoSignal(_defaults.PadsCatchFalling);
+        _settings.OriginalJumpPads = _defaults.OriginalJumpPads;
+        _padsCatch.SetPressedNoSignal(_defaults.OriginalJumpPads);
     }
 }

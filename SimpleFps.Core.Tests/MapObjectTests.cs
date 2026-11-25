@@ -311,7 +311,7 @@ public class MapObjectTests
     public void APushOnceZoneGoesAfterOnePush()
     {
         MapObjects map = Spawn("""{ "classname" "trigger_push" "model" "*1" "angle" "-1" "speed" "70" "spawnflags" "1" }""", Cube(Vector3.Zero, 64));
-        PlayerState s = StandingAt(0, 0);
+        PlayerState s = StandingAt(0, 0) with { OnGround = true };
 
         Touch(map, ref s);
         Assert.Equal(700f, s.Velocity.Z);
@@ -340,7 +340,6 @@ public class MapObjectTests
     [Theory]
     [InlineData(true, -10f)] // just landed on it
     [InlineData(false, 100f)] // rising into it
-    [InlineData(false, 0f)] // at the top of a hop
     public void AJumpPadThrowsYouUpWhenYouLandOnItOrRiseIntoIt(bool onGround, float upward)
     {
         MapObjects map = Spawn(JumpPad, Cube(Vector3.Zero, 64));
@@ -364,13 +363,89 @@ public class MapObjectTests
     }
 
     [Fact]
+    public void SteppingOffAnEdgeIntoAJumpPadDoesntCatchYou()
+    {
+        // In the air with no fall speed yet, as on the tick you walk off an edge.
+        MapObjects map = Spawn(JumpPad, Cube(Vector3.Zero, 64));
+        PlayerState s = StandingAt(0, 0) with { OnGround = false, Velocity = new Vector3(100, 0, 0) };
+
+        Touch(map, ref s);
+
+        Assert.Equal(new Vector3(100, 0, 0), s.Velocity);
+    }
+
+    /// <summary>A pad shaft 128 deep with its column poking 16 above a ledge beside it, like q2pduel1's.</summary>
+    private static (MapObjects Map, TestWorld World) PadBesideALedge()
+    {
+        var world = new TestWorld().Floor().Box(new Vector3(-200, -64, 0), new Vector3(-64, 64, 128));
+        MapObjects map = MapObjects.Spawn(
+            BspEntity.Parse(JumpPad),
+            [default, new Box(new Vector3(-64, -64, 0), new Vector3(64, 64, 144))],
+            world);
+        return (map, world);
+    }
+
+    [Fact]
+    public void AJumpPadsFloorIsTheGroundInsideIt()
+    {
+        (MapObjects map, _) = PadBesideALedge();
+        MapObjects raised = MapObjects.Spawn(
+            BspEntity.Parse(JumpPad),
+            [default, new Box(new Vector3(-64, -64, -32), new Vector3(64, 64, 200))],
+            new TestWorld().Floor().Box(new Vector3(-40, -40, 0), new Vector3(40, 40, 24)));
+
+        Assert.Equal(0f, map.PushZones[0].Floor!.Value, 0.1f);
+        Assert.Equal(24f, raised.PushZones[0].Floor!.Value, 0.1f);
+    }
+
+    [Fact]
+    public void StandingOnALedgeAtAJumpPadsEdgeDoesntThrowYou()
+    {
+        (MapObjects map, _) = PadBesideALedge();
+
+        // On the ledge, 128 up, with the body reaching over the shaft's edge into the pad's column.
+        PlayerState s = PlayerState.At(new Vector3(-70, 0, 128 + FeetOnFloor)) with { OnGround = true };
+        Assert.True(map.PushZones[0].Volume.Touches(s.Position + s.Mins, s.Position + s.Maxs));
+
+        Touch(map, ref s);
+        Assert.Equal(0f, s.Velocity.Z);
+
+        map.ClearEvents();
+        map.Touch(0, ref s, Idle(), new MoveSettings { OriginalJumpPads = true });
+        Assert.Equal(700f, s.Velocity.Z);
+    }
+
+    [Fact]
+    public void CrouchingOffALedgeDropsYouDownAJumpPadAndItThrowsYouBackUp()
+    {
+        (MapObjects objects, TestWorld world) = PadBesideALedge();
+        var sim = new Simulation(world, new MoveSettings(), objects);
+        sim.AddPlayer(new Vector3(-150, 0, 128 + 16));
+
+        float lowest = float.MaxValue, highestAfter = 0;
+        for (int i = 0; i < 300; i++)
+        {
+            sim.Tick([i < 120 ? new MoveCommand(0, 0, 1, 0, Crouch: true) : Idle()]);
+            PlayerState s = sim.Players[0];
+            lowest = MathF.Min(lowest, s.Position.Z);
+            if (lowest < 30)
+            {
+                highestAfter = MathF.Max(highestAfter, s.Position.Z);
+            }
+        }
+
+        Assert.True(lowest < 30, $"never reached the pad's floor, lowest {lowest}");
+        Assert.True(highestAfter > 144 + 200, $"wasn't thrown back up, reached {highestAfter}");
+    }
+
+    [Fact]
     public void TheSettingBringsBackPadsThatCatchYouFalling()
     {
         MapObjects map = Spawn(JumpPad, Cube(Vector3.Zero, 64));
         PlayerState s = StandingAt(0, 0) with { Velocity = new Vector3(0, 0, -300) };
 
         map.ClearEvents();
-        map.Touch(0, ref s, Idle(), new MoveSettings { PadsCatchFalling = true });
+        map.Touch(0, ref s, Idle(), new MoveSettings { OriginalJumpPads = true });
 
         Assert.Equal(700f, s.Velocity.Z);
     }

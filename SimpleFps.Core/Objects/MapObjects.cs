@@ -43,6 +43,9 @@ public sealed class MapObjects
 
     private const int PushReportTicks = GameInfo.TickRate * 3 / 2;
 
+    /// <summary>Ground at least this level counts as a floor, as it does for movement.</summary>
+    private const float WalkableNormalZ = 0.7f;
+
     /// <summary>Classes that need nothing from us, so they aren't listed as unhandled.</summary>
     private static readonly HashSet<string> NothingToDo = new(StringComparer.Ordinal)
     {
@@ -150,6 +153,11 @@ public sealed class MapObjects
         foreach (Teleporter teleporter in map.Teleporters)
         {
             map.FindExit(teleporter);
+        }
+
+        foreach (PushZone pad in map.PushZones.Where(p => p.Lifts))
+        {
+            pad.Floor = map.PadFloor(pad.Volume);
         }
 
         foreach (MapObject o in map._objects)
@@ -319,6 +327,53 @@ public sealed class MapObjects
         }
 
         return fallback;
+    }
+
+    /// <summary>
+    /// The highest ground under a jump pad, looked for on a 5 by 5 grid across it, from its top down
+    /// to a little below its bottom. Only ground inside its outline counts, so a ledge beside the pad
+    /// isn't its floor, while a raised platform inside it is. Null if nothing is found.
+    /// </summary>
+    private float? PadFloor(Box volume)
+    {
+        if (_world is null)
+        {
+            return null;
+        }
+
+        const int Samples = 5;
+        const float Below = 64f;
+        const float ScanStep = 4f;
+        float? highest = null;
+        Vector3 size = volume.Max - volume.Min;
+        for (int i = 0; i < Samples; i++)
+        {
+            for (int j = 0; j < Samples; j++)
+            {
+                float x = volume.Min.X + (size.X * (i + 0.5f) / Samples);
+                float y = volume.Min.Y + (size.Y * (j + 0.5f) / Samples);
+
+                // Start from the first clear point down from the top, since a pad can reach into walls.
+                for (float z = volume.Max.Z; z >= volume.Min.Z - Below; z -= ScanStep)
+                {
+                    var top = new Vector3(x, y, z);
+                    TraceResult t = _world.Trace(top, new Vector3(x, y, volume.Min.Z - Below), Vector3.Zero, Vector3.Zero, Contents.PlayerSolid);
+                    if (t.StartSolid)
+                    {
+                        continue;
+                    }
+
+                    if (t.Hit && t.Normal.Z >= WalkableNormalZ)
+                    {
+                        highest = MathF.Max(highest ?? float.MinValue, t.End.Z);
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        return highest;
     }
 
     /// <summary>
