@@ -11,7 +11,7 @@ namespace SimpleFps.Game.World;
 public partial class MapView : Node3D
 {
     /// <summary>32 map units to the metre keeps Godot's numbers at a human scale.</summary>
-    private const float MapUnitsPerGodotUnit = 32f;
+    public const float MapUnitsPerGodotUnit = 32f;
 
     private const float Trans33Opacity = 0.33f;
     private const float Trans66Opacity = 0.66f;

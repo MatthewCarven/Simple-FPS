@@ -1,6 +1,7 @@
 using System;
 using Godot;
 using SimpleFps.Core.Movement;
+using SimpleFps.Core.Objects;
 using SimpleFps.Game.World;
 using SysVector3 = System.Numerics.Vector3;
 
@@ -43,6 +44,9 @@ public partial class LocalPlayer : Node
     /// the player. Esc itself belongs to <see cref="Main"/>.
     /// </summary>
     public bool Paused { get; set; }
+
+    /// <summary>Raised after each tick for each thing the map's objects did, for pads, messages and later sounds.</summary>
+    public event Action<MapEvent>? MapEventHappened;
 
     private PlayerState Current => _after;
 
@@ -120,11 +124,27 @@ public partial class LocalPlayer : Node
         _sim.Tick([ReadCommand()]);
         _after = _sim.Players[PlayerIndex];
 
-        // Stairs lift the body in jumps. The camera catches up smoothly instead.
-        float rise = _after.Position.Z - _before.Position.Z;
-        if (_before.OnGround && _after.OnGround && MathF.Abs(rise) <= _sim.Settings.StepHeight)
+        if (_after.Teleports != _before.Teleports)
         {
-            _stepOffset -= rise;
+            // The view jumps rather than sliding there, and turns to face the exit, levelled.
+            _before = _after;
+            _yaw = _after.TeleportYaw;
+            _pitch = 0f;
+            _stepOffset = 0f;
+        }
+        else
+        {
+            // Stairs lift the body in jumps. The camera catches up smoothly instead.
+            float rise = _after.Position.Z - _before.Position.Z;
+            if (_before.OnGround && _after.OnGround && MathF.Abs(rise) <= _sim.Settings.StepHeight)
+            {
+                _stepOffset -= rise;
+            }
+        }
+
+        foreach (MapEvent e in _sim.Objects.Events)
+        {
+            MapEventHappened?.Invoke(e);
         }
     }
 

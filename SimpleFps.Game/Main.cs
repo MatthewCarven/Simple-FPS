@@ -10,6 +10,7 @@ using SimpleFps.Core.Bake;
 using SimpleFps.Core.Bsp;
 using SimpleFps.Core.Collision;
 using SimpleFps.Core.Movement;
+using SimpleFps.Core.Objects;
 using SimpleFps.Game.Player;
 using SimpleFps.Game.Ui;
 using SimpleFps.Game.World;
@@ -47,6 +48,7 @@ public partial class Main : Node
     private readonly TuningPanel _panel = new();
     private readonly MapMenu _menu = new();
     private readonly PauseMenu _pause = new();
+    private readonly MapMessage _message = new();
     private readonly MoveSettings _settings = LoadSettings();
     private readonly PlayerOptions _options = LoadOptions();
     private Label _status = null!;
@@ -107,6 +109,9 @@ public partial class Main : Node
         _pause.MapListChosen += BackToList;
         _pause.QuitChosen += () => GetTree().Quit();
         AddChild(_pause);
+
+        _message.Build();
+        AddChild(_message);
 
         string? mapFlag = Flag(args, "--map=");
         string? shot = Flag(args, "--shot=");
@@ -356,10 +361,16 @@ public partial class Main : Node
             AddChild(_view);
             _textures = textures;
 
-            var sim = new Simulation(new BspCollision(map.Collision), _settings);
+            var world = new BspCollision(map.Collision);
+            MapObjects objects = MapObjects.Spawn(map, world);
+            var sim = new Simulation(world, _settings, objects);
             (SysVector3 spawn, float yaw) = FindSpawn(map.Entities, spawnFlag);
             _player = new LocalPlayer();
             AddChild(_player);
+            TeleporterPads pads = TeleporterPads.Build(objects);
+            _view.AddChild(pads);
+            _player.MapEventHappened += pads.Handle;
+            _player.MapEventHappened += _message.Handle;
             float pitch = float.TryParse(Flag(OS.GetCmdlineUserArgs(), "--pitch="), NumberStyles.Float, CultureInfo.InvariantCulture, out float wanted) ? wanted : 0f;
             _player.Begin(sim, spawn, yaw, pitch);
 
@@ -373,6 +384,12 @@ public partial class Main : Node
             string set = _textureSet == TextureSet.HighRes ? $"high-res ({textures.HighResCount} from the pack)" : "original";
             GD.Print($"map {name}: {from} in {mapTaken} ms, {_view.SurfaceCount} surfaces, {textures.LoadedCount} textures {set}, {textures.Missing.Count} missing, {textures.BakedCount} baked, textures and meshes {texturesTaken} ms (bakes {textures.CacheTime.TotalMilliseconds:F0}, to Godot {textures.UploadTime.TotalMilliseconds:F0}), {taken} ms in all");
             GD.Print($"  sky {_view.Sky.Name}: {_view.SkySource ?? "pictures missing, flat colour"}{(_view.Sky.Spins ? $", spinning {_view.Sky.DegreesPerSecond} degrees a second" : "")}");
+            GD.Print($"  {objects.Summary()}; {pads.WaysIn} teleporter pads and {pads.WaysOut} exits drawn");
+            foreach (string problem in objects.Problems)
+            {
+                GD.Print($"  map object problem: {problem}");
+            }
+
             foreach (string missing in textures.Missing)
             {
                 GD.Print($"  missing texture: {missing}");
@@ -403,6 +420,7 @@ public partial class Main : Node
         _map = null;
         _mapTitle = "";
         _status.Text = "";
+        _message.Clear();
     }
 
     /// <summary>
@@ -452,7 +470,8 @@ public partial class Main : Node
     /// </summary>
     private bool RunSmokeTest()
     {
-        var sim = new Simulation(new BspCollision(_map!.Collision), _settings);
+        var world = new BspCollision(_map!.Collision);
+        var sim = new Simulation(world, _settings, MapObjects.Spawn(_map, world));
         sim.AddPlayer(_spawn);
         for (int i = 0; i < SmokeTestTicks; i++)
         {
