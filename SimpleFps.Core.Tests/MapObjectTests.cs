@@ -322,6 +322,91 @@ public class MapObjectTests
         Assert.True(map.PushZones[0].Removed);
     }
 
+    private const string JumpPad = """{ "classname" "trigger_push" "model" "*1" "angle" "-1" "speed" "70" }""";
+
+    [Fact]
+    public void AJumpPadLetsYouFallThroughIt()
+    {
+        MapObjects map = Spawn(JumpPad, Cube(Vector3.Zero, 64));
+        PlayerState s = StandingAt(0, 0) with { Velocity = new Vector3(50, 0, -300) };
+
+        Touch(map, ref s);
+
+        Assert.True(map.PushZones[0].Lifts);
+        Assert.Equal(new Vector3(50, 0, -300), s.Velocity);
+        Assert.Empty(map.Events);
+    }
+
+    [Theory]
+    [InlineData(true, -10f)] // just landed on it
+    [InlineData(false, 100f)] // rising into it
+    [InlineData(false, 0f)] // at the top of a hop
+    public void AJumpPadThrowsYouUpWhenYouLandOnItOrRiseIntoIt(bool onGround, float upward)
+    {
+        MapObjects map = Spawn(JumpPad, Cube(Vector3.Zero, 64));
+        PlayerState s = StandingAt(0, 0) with { OnGround = onGround, Velocity = new Vector3(0, 0, upward) };
+
+        Touch(map, ref s);
+
+        Assert.Equal(700f, s.Velocity.Z);
+    }
+
+    [Fact]
+    public void ASidewaysPushCatchesYouWhileFalling()
+    {
+        MapObjects map = Spawn("""{ "classname" "trigger_push" "model" "*1" "angle" "90" "speed" "50" }""", Cube(Vector3.Zero, 64));
+        PlayerState s = StandingAt(0, 0) with { Velocity = new Vector3(0, 0, -300) };
+
+        Touch(map, ref s);
+
+        Assert.False(map.PushZones[0].Lifts);
+        Assert.Equal(new Vector3(0, 500, 0), s.Velocity, new Vector3Within(0.01f));
+    }
+
+    [Fact]
+    public void TheSettingBringsBackPadsThatCatchYouFalling()
+    {
+        MapObjects map = Spawn(JumpPad, Cube(Vector3.Zero, 64));
+        PlayerState s = StandingAt(0, 0) with { Velocity = new Vector3(0, 0, -300) };
+
+        map.ClearEvents();
+        map.Touch(0, ref s, Idle(), new MoveSettings { PadsCatchFalling = true });
+
+        Assert.Equal(700f, s.Velocity.Z);
+    }
+
+    [Fact]
+    public void DroppingIntoAJumpPadLandsYouOnItThenThrowsYouUp()
+    {
+        var world = new TestWorld().Floor();
+        MapObjects objects = MapObjects.Spawn(
+            BspEntity.Parse(JumpPad),
+            [default, new Box(new Vector3(-64, -64, 0), new Vector3(64, 64, 200))],
+            world);
+        var sim = new Simulation(world, new MoveSettings(), objects);
+        sim.AddPlayer(new Vector3(0, 0, 400));
+
+        float? pushedFrom = null;
+        float highest = 0;
+        for (int i = 0; i < 240; i++)
+        {
+            sim.Tick([Idle()]);
+            if (pushedFrom is null && objects.Events.Any(e => e.Kind == MapEventKind.Pushed))
+            {
+                pushedFrom = sim.Players[0].Position.Z;
+            }
+
+            if (pushedFrom is not null)
+            {
+                highest = MathF.Max(highest, sim.Players[0].Position.Z);
+            }
+        }
+
+        // Fell the whole column to its floor before the first push, then went back out of its top.
+        Assert.Equal(FeetOnFloor, pushedFrom!.Value, 1f);
+        Assert.True(highest > 200 + 24 + 250, $"only reached {highest}");
+    }
+
     // Touch triggers.
 
     private static string Trigger(string classname, string keys = "") =>

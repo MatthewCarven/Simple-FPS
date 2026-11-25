@@ -65,7 +65,7 @@ public abstract class TouchObject : MapObject
     internal virtual bool Touchable => true;
 
     /// <summary>Called on each tick a player ends inside the volume, after they've moved.</summary>
-    internal abstract void Touch(MapObjects map, int player, ref PlayerState s, in MoveCommand cmd);
+    internal abstract void Touch(MapObjects map, int player, ref PlayerState s, in MoveCommand cmd, MoveSettings settings);
 }
 
 /// <summary>An entity with nothing to do: a light, a spawn spot, or a class not built yet.</summary>

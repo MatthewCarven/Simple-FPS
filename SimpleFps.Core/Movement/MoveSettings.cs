@@ -44,6 +44,13 @@ public sealed class MoveSettings
     /// <summary>Lets you crouch in mid-air to fit low openings. Off, as agreed in the plan.</summary>
     public bool AllowCrouchJump { get; set; }
 
+    /// <summary>
+    /// Lets a jump pad catch you while you're falling into it, as the original game did. Off since
+    /// Matthew tried it (2026-11-25): a pad throws you up when you land on it or rise into it, and
+    /// you can fall past one in mid-air.
+    /// </summary>
+    public bool PadsCatchFalling { get; set; }
+
     /// <summary>Recoil can't push you past this speed in the direction it's pushing.</summary>
     public float RecoilTopSpeed { get; set; } = 700f;
 

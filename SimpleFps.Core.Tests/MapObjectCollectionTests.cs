@@ -138,7 +138,7 @@ public class MapObjectCollectionTests(ITestOutputHelper output)
             found.CrouchOnly.Add(where);
         }
 
-        same.Touch(fresh, 0, ref s, new MoveCommand(0, 0, 0, 0));
+        same.Touch(fresh, 0, ref s, new MoveCommand(0, 0, 0, 0), new MoveSettings());
         (Vector3 arrival, _) = Teleporter.Arrival(teleporter.Exit);
         Assert.True(
             s.Teleports == 1 && s.Position.X == arrival.X && s.Position.Y == arrival.Y && s.Position.Z >= arrival.Z && s.Position.Z <= arrival.Z + 32,

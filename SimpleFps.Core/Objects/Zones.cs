@@ -43,7 +43,7 @@ public sealed class Teleporter : TouchObject
     public static (Vector3 Position, float Yaw) Arrival(MapObject exit) =>
         (EntityKeys.Origin(exit.Fields) + (Vector3.UnitZ * ExitLift), EntityKeys.Angles(exit.Fields).Y);
 
-    internal override void Touch(MapObjects map, int player, ref PlayerState s, in MoveCommand cmd)
+    internal override void Touch(MapObjects map, int player, ref PlayerState s, in MoveCommand cmd, MoveSettings settings)
     {
         // Found afresh each time, as the original did, so a killtarget on the exit takes effect.
         if (map.FirstNamed(Target) is not { } exit)
@@ -71,6 +71,13 @@ public sealed class Teleporter : TouchObject
 /// direction comes from <c>angle</c> or <c>angles</c>, where an angle of -1 is up and -2 down.
 /// Flag 1 makes it work once and then go.
 /// </summary>
+/// <remarks>
+/// A jump pad, one that pushes mostly upward, lets you fall through it (Matthew, 2026-11-25). It
+/// throws you up when you land on it or rise into it, and keeps lifting you while you rise, so
+/// launches are as the map intends. The original caught you while falling too, and
+/// <see cref="MoveSettings.PadsCatchFalling"/> brings that back. Sideways and downward pushes
+/// catch you either way.
+/// </remarks>
 public sealed class PushZone : TouchObject
 {
     /// <summary>
@@ -79,6 +86,9 @@ public sealed class PushZone : TouchObject
     /// few zones with no speed at all, which the original took as 10,000, reach it.
     /// </summary>
     public const float TopSpeed = 4000f;
+
+    /// <summary>A push within about 45 degrees of straight up counts as a jump pad.</summary>
+    private const float LiftingZ = 0.7f;
 
     private const float DefaultSpeed = 1000f;
     private const float SpeedScale = 10f;
@@ -102,8 +112,16 @@ public sealed class PushZone : TouchObject
 
     public Vector3 Velocity => Direction * Speed;
 
-    internal override void Touch(MapObjects map, int player, ref PlayerState s, in MoveCommand cmd)
+    /// <summary>A jump pad: it pushes mostly upward.</summary>
+    public bool Lifts => Velocity.Z > MathF.Abs(Speed) * LiftingZ;
+
+    internal override void Touch(MapObjects map, int player, ref PlayerState s, in MoveCommand cmd, MoveSettings settings)
     {
+        if (Lifts && !settings.PadsCatchFalling && !s.OnGround && s.Velocity.Z < 0)
+        {
+            return;
+        }
+
         s.Velocity = Velocity;
         map.PushedNow(Entity, player);
         if (Once)

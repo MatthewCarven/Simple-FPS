@@ -46,7 +46,7 @@ public sealed class Simulation(ICollisionWorld world, MoveSettings settings, Map
             PlayerState state = _players[i];
             FireTestGun(ref state, commands[i]);
             _move.Step(ref state, commands[i]);
-            Objects.Touch(i, ref state, commands[i]);
+            Objects.Touch(i, ref state, commands[i], Settings);
             _players[i] = state;
         }
 

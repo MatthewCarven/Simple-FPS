@@ -39,6 +39,8 @@ public sealed class MapObjects
     /// </summary>
     private static readonly float[] ArrivalLifts = [ICollisionWorld.SurfaceGap, 1, 2, 4, 8, 16, 24, 32];
 
+    private static readonly MoveSettings DefaultSettings = new();
+
     private const int PushReportTicks = GameInfo.TickRate * 3 / 2;
 
     /// <summary>Classes that need nothing from us, so they aren't listed as unhandled.</summary>
@@ -179,7 +181,8 @@ public sealed class MapObjects
     }
 
     /// <summary>Sets off whatever a player ends the tick inside. Called after they've moved.</summary>
-    public void Touch(int player, ref PlayerState s, in MoveCommand cmd)
+    /// <param name="settings">The server's movement settings, or the defaults if left out.</param>
+    public void Touch(int player, ref PlayerState s, in MoveCommand cmd, MoveSettings? settings = null)
     {
         if (_touchables.Count == 0)
         {
@@ -203,7 +206,7 @@ public sealed class MapObjects
         {
             if (!o.Removed && o.Touchable)
             {
-                o.Touch(this, player, ref s, cmd);
+                o.Touch(this, player, ref s, cmd, settings ?? DefaultSettings);
 
                 // The rest were found where the player was, not where they are now.
                 if (s.Teleports != teleports)
