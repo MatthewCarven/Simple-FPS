@@ -70,6 +70,13 @@ zones 40, relays 24, hurt zones 23, `func_wall` 65, ambient sound spots (`target
 - [x] Hurt zones (`trigger_hurt`) found and marked, ready for damage in milestone 5. Done.
 - [ ] Matthew: is the teleporter pad's light bright enough, and the exit disc dim enough? Neither was
       commented on. Both are constants at the top of `TeleporterPads.cs`.
+- [x] Push zones reworked by hand (Matthew, 2026-11-25): they take hold of you only on their own floor or
+      while you rise, and jump pads keep your speed while you hold a movement key. A panel switch brings back
+      the original's.
+- [ ] Matthew: walk off `q2pduel1`'s upper ledge standing up, into the jump pad's shaft. Only the crouched
+      drop has been tried by hand.
+- [ ] Sideways wind and carry zones no longer push you while you fall through them. Watch for a map that
+      needed it; `q2e3m5`'s chains of pushes are the likeliest.
 
 4c, moving things (after 4a and 4b):
 - [ ] Doors (`func_door`, `func_door_rotating`, `func_door_secret`), lifts (`func_plat`), trains

@@ -18,7 +18,7 @@ instead of snagging on them, and every shot and blast shoves you about.
 | Air control | Almost none, like ice. To change direction you touch down. |
 | Hop landing | Turning on landing costs speed. Gentle curves stay fast, hard corners slow you down. |
 | Pushes | Every explosion shoves you. Gunfire pushes both shooter and target a little, so your own gun steers you mid-hop. |
-| Map objects | Agreed 2026-11-25. Teleporters keep your speed, turned to face the exit, where the original stopped you dead. Jumping off a moving lift or train keeps its speed, so lift launches and train surfing are tricks. Teleporters get our own glowing pad, since the original's model isn't ours. Sounds come in with map objects instead of waiting for guns. |
+| Map objects | Agreed 2026-11-25. Teleporters keep your speed, turned to face the exit, where the original stopped you dead. Jumping off a moving lift or train keeps its speed, so lift launches and train surfing are tricks. Teleporters get our own glowing pad, since the original's model isn't ours. Sounds come in with map objects instead of waiting for guns. Settled by hand at 4b: a push zone only takes hold of you on its own floor or while you're moving up through it, so you can fall past a jump pad, and a jump pad keeps your speed while you hold a movement key. A tuning panel switch brings back the original's push zones. |
 | Server movement | Agreed 2026-11-08. Each server owns its movement settings, and only its host (or admins they name) can change them. A change is announced to everyone at once and takes effect at the next round. The announcement carries a picture the game draws itself: a jump run with the old numbers and the new, both arcs drawn, plus the old and new values. Servers with changed movement get a badge and a one-line summary, like "low gravity, fast run", in the server list. |
 | Lighting | Cheap. Each map's own baked light, plus small moving lights on energy rounds, muzzle flashes and explosions. |
 | Textures | Maps keep their look. High-res swapped in where names match, otherwise the original or a stand-in. A per-map file can override any of it. A switch flips between high-res and the originals (2026-11-24). Original textures stay smooth, as now, not pixelated. Skies are each map's own, and a high-res sky only swaps in if it's the original redrawn (2026-11-24). |
@@ -104,7 +104,8 @@ the teleporter pad's.
 **Map objects.** Built at 4b: every entity that exists in deathmatch becomes a map object
 (`SimpleFps.Core/Objects`), spawned from the bake and run inside the simulation. Objects find each other by
 name, and an event list each tick tells the game what to show or play. Classes not built yet are listed once
-per map.
+per map. Push zones work out their own floor as the map loads, which is what lets them act only on someone
+standing on it (or rising), and they judge everyone as they were when the tick's touching began.
 
 **Bake.** One file per map, holding meshes, the light atlas, collision, entities and bot paths. Kept in
 `cache/`, keyed on file hash and bake version, so changing the format just re-bakes. New maps can be made

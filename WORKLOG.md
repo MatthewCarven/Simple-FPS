@@ -437,3 +437,42 @@ Not checked: the pad's light strength and the exit disc's dimness weren't commen
 hurt zones, and the teleporter's and push zone's sounds wait for later (TODO.md). Doors, lifts and anything
 else that moves or blocks is 4c's. `q2dm1_mcp` aims two push zones at targets, a feature of a later game; here
 they push along their angle as the original did.
+
+## 2026-11-25: 4b, push zones reworked by hand
+
+After the first hand test Matthew asked for jump pads that don't catch you unless you're on the pad, and we
+worked it out over five rounds on `q2pduel1` and `q2ztn3dm1`, each one simulated before he played it. Where
+it ended (`PushZone.Acts` and `KeepingSpeed`):
+- A push zone takes hold of you only when you're on its own floor, or moving up through it, and keeps hold
+  while you stay in it. Its floor is the highest ground inside its outline, found as the map loads, from 32
+  above its top (some pads are buried in the floor slab you stand on) to 256 below its bottom (some float).
+  So you can fall through a pad, land on its floor and be thrown back up, and a ledge at a pad's edge doesn't
+  throw or push you just because your head is in the zone. On `q2pduel1` you can now walk off the upper
+  ledge down the jump pad's shaft, which the original's zones guard twice.
+- Every zone judges you as you were when the tick's touching began, so zones touched together don't depend
+  on which is checked first. The first walk-in build got this wrong: from `q2pduel1`'s corridor you touch the
+  column, the strip beside it and the carry zone at once, and the carry zone let go as you started to fall.
+- A jump pad keeps your speed while you hold any movement key (Matthew): it sets your climb, and across you
+  go at your own speed or the pad's sideways speed, whichever is faster, heading the way the two add up. Let
+  go and it throws you as the map says. On `q2ztn3dm1` that keeps a 300 run through a pad that used to cut
+  it to its own 88.
+- "Push zones as in the original: catch you anywhere" on the tuning panel (`MoveSettings.OriginalPushZones`,
+  off) brings back the original's zones, which act on anyone touching them and set your speed outright.
+- The push log line says whether you were standing or crouched, and on the ground or in the air.
+
+Checked:
+- 319 tests pass, and the build has no warnings. A test on `q2pduel1` itself walks and crouches off the ledge,
+  launches from the pad, walks in from the corridor, and checks the original rule turns you back at the edge.
+- Across the collection, every spot you can stand on inside a jump pad still throws you (2,593 of 2,617),
+  except 24 that are ledges at the edge of a pad's shaft (`q2pduel1`, and `raingod`'s four pits), which is the
+  point. All 179 standing spots in sideways and downward zones still push you. 116 of the 132 jump pads have
+  their floor found; the rest count anyone with their feet in or just under them.
+- The smoke test on `ringbase` still ends at exactly the same position and speed from spawns 0 and 3.
+- By hand: Matthew crouched off `q2pduel1`'s ledge down the shaft (the log shows the pad throwing him from its
+  floor, crouched), walked into the pad from the corridor and said it works now, and ran onto `q2ztn3dm1`'s
+  pads holding forward and said his speed carries through (the log shows 300 across, 715 up).
+
+Not checked: walking off `q2pduel1`'s ledge standing up, by hand. Sideways wind and carry zones on other maps
+no longer push you while you fall through them, which no one has tried; `q2e3m5`'s chains of pushes are the
+likeliest to notice. Matthew also looked at `q2dm2` (an original level, kept out of tuning) from the main
+folder, which runs `master` without 4b: its lifts are `func_plat` and `func_train`, which 4c builds.
