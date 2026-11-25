@@ -77,8 +77,15 @@ public sealed class Teleporter : TouchObject
 /// and a zone at its top keeps carrying you across. So you can fall through one in mid-air, land
 /// on its floor and be thrown back up, and standing on a ledge at its edge with only your head in
 /// it does nothing. On q2pduel1 that lets you walk off the upper ledge down the jump pad's shaft.
-/// The original acted on anyone touching it, and <see cref="MoveSettings.OriginalPushZones"/>
-/// brings that back.
+/// <para>
+/// A jump pad keeps your speed while you hold a movement key (Matthew, 2026-11-25): it sets how
+/// fast you go up, and you go across at your own speed or the pad's sideways speed, whichever is
+/// faster, heading the way the two add up. So a near-upright pad keeps your run, and one aimed hard
+/// at a ledge still lands you there unless you're going faster than it throws. Let go of the keys
+/// and it throws you as the map says.
+/// </para>
+/// The original acted on anyone touching it and set your speed outright, and
+/// <see cref="MoveSettings.OriginalPushZones"/> brings that back.
 /// </remarks>
 public sealed class PushZone : TouchObject
 {
@@ -98,6 +105,20 @@ public sealed class PushZone : TouchObject
 
     /// <summary>The tick this zone last pushed each player.</summary>
     private readonly Dictionary<int, long> _heldAt = [];
+
+    /// <summary>
+    /// The pad's climb, with the player's own speed across kept: the faster of theirs and the pad's,
+    /// heading the way the two add up.
+    /// </summary>
+    public Vector3 KeepingSpeed(Vector3 current)
+    {
+        var mine = new Vector2(current.X, current.Y);
+        var pad = new Vector2(Velocity.X, Velocity.Y);
+        Vector2 heading = mine + pad;
+        float speed = MathF.Max(mine.Length(), pad.Length());
+        Vector2 across = heading.LengthSquared() > 1e-6f ? Vector2.Normalize(heading) * speed : pad;
+        return new Vector3(across.X, across.Y, Velocity.Z);
+    }
 
     internal PushZone(int entity, BspEntity fields, Box volume)
         : base(entity, fields, volume)
@@ -157,7 +178,8 @@ public sealed class PushZone : TouchObject
         }
 
         _heldAt[player] = map.Ticks;
-        s.Velocity = Velocity;
+        bool steering = cmd.Forward != 0 || cmd.Side != 0;
+        s.Velocity = Lifts && steering && !settings.OriginalPushZones ? KeepingSpeed(before.Velocity) : Velocity;
         map.PushedNow(Entity, player);
         if (Once)
         {

@@ -426,6 +426,49 @@ public class MapObjectTests
     }
 
     [Fact]
+    public void AJumpPadKeepsYourSpeedWhileYouHoldAKey()
+    {
+        MapObjects map = Spawn(JumpPad, Cube(Vector3.Zero, 64));
+        PlayerState s = StandingAt(0, 0) with { OnGround = true, Velocity = new Vector3(300, 0, 0) };
+
+        Touch(map, ref s, new MoveCommand(0, 0, 1, 0));
+
+        Assert.Equal(new Vector3(300, 0, 700), s.Velocity, new Vector3Within(0.01f));
+    }
+
+    [Fact]
+    public void LettingGoOfTheKeysLetsAJumpPadThrowYouAsTheMapSays()
+    {
+        MapObjects map = Spawn(JumpPad, Cube(Vector3.Zero, 64));
+        PlayerState s = StandingAt(0, 0) with { OnGround = true, Velocity = new Vector3(300, 0, 0) };
+
+        Touch(map, ref s, Idle());
+
+        Assert.Equal(new Vector3(0, 0, 700), s.Velocity, new Vector3Within(0.01f));
+    }
+
+    [Theory]
+    [InlineData(300f, 0f)] // slower than the pad's throw: its speed, turned a little your way
+    [InlineData(600f, 0f)] // faster: your speed, turned a little its way
+    [InlineData(0f, -300f)] // straight at it: its throw wins the direction
+    public void AnAimedPadThrowsYouAtTheFasterOfYoursAndItsOwn(float x, float y)
+    {
+        // Tipped 45 degrees towards +Y at 700: 495 up and 495 across.
+        MapObjects map = Spawn("""{ "classname" "trigger_push" "model" "*1" "angles" "-45 90 0" "speed" "70" }""", Cube(Vector3.Zero, 64));
+        var mine = new Vector3(x, y, 0);
+        PlayerState s = StandingAt(0, 0) with { OnGround = true, Velocity = mine };
+
+        Touch(map, ref s, new MoveCommand(0, 0, 0, 1));
+
+        Vector3 pad = map.PushZones[0].Velocity;
+        var across = new Vector2(s.Velocity.X, s.Velocity.Y);
+        var sum = new Vector2(mine.X + pad.X, mine.Y + pad.Y);
+        Assert.Equal(pad.Z, s.Velocity.Z, 0.01f);
+        Assert.Equal(MathF.Max(mine.Length(), new Vector2(pad.X, pad.Y).Length()), across.Length(), 0.1f);
+        Assert.Equal(0f, (across.X * sum.Y) - (across.Y * sum.X), 1f);
+    }
+
+    [Fact]
     public void SteppingOffAnEdgeIntoAJumpPadDoesntCatchYou()
     {
         // In the air with no fall speed yet, as on the tick you walk off an edge.
@@ -499,6 +542,18 @@ public class MapObjectTests
 
         Assert.True(lowest < 30, $"never reached the pad's floor, lowest {lowest}");
         Assert.True(highestAfter > 144 + 200, $"wasn't thrown back up, reached {highestAfter}");
+    }
+
+    [Fact]
+    public void TheSettingBringsBackPadsThatSetYourSpeedOutright()
+    {
+        MapObjects map = Spawn(JumpPad, Cube(Vector3.Zero, 64));
+        PlayerState s = StandingAt(0, 0) with { OnGround = true, Velocity = new Vector3(300, 0, 0) };
+
+        map.ClearEvents();
+        map.Touch(0, ref s, new MoveCommand(0, 0, 1, 0), new MoveSettings { OriginalPushZones = true });
+
+        Assert.Equal(new Vector3(0, 0, 700), s.Velocity, new Vector3Within(0.01f));
     }
 
     [Fact]
