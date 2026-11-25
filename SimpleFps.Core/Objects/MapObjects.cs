@@ -330,10 +330,10 @@ public sealed class MapObjects
     }
 
     /// <summary>
-    /// The highest ground under a push zone, looked for on a 5 by 5 grid across it, from its top
-    /// down to well below its bottom, since a zone can float over the ground it belongs to. Only
-    /// ground inside its outline counts, so a ledge beside it isn't its floor, while a raised
-    /// platform inside it is. Null if nothing is found.
+    /// The highest ground under a push zone, looked for on a 5 by 5 grid across it, from a little
+    /// above its top, since some are buried in the floor they belong to, down to well below its
+    /// bottom, since others float over theirs. Only ground inside its outline counts, so a ledge
+    /// beside it isn't its floor, while a raised platform inside it is. Null if nothing is found.
     /// </summary>
     private float? ZoneFloor(Box volume)
     {
@@ -345,6 +345,7 @@ public sealed class MapObjects
         const int Samples = 5;
         const float Below = 256f;
         const float ScanStep = 4f;
+        const float Above = 32f;
         float? highest = null;
         Vector3 size = volume.Max - volume.Min;
         for (int i = 0; i < Samples; i++)
@@ -354,8 +355,8 @@ public sealed class MapObjects
                 float x = volume.Min.X + (size.X * (i + 0.5f) / Samples);
                 float y = volume.Min.Y + (size.Y * (j + 0.5f) / Samples);
 
-                // Start from the first clear point down from the top, since a pad can reach into walls.
-                for (float z = volume.Max.Z; z >= volume.Min.Z - Below; z -= ScanStep)
+                // Start from the first clear point down, since a zone can reach into walls.
+                for (float z = volume.Max.Z + Above; z >= volume.Min.Z - Below; z -= ScanStep)
                 {
                     var top = new Vector3(x, y, z);
                     TraceResult t = _world.Trace(top, new Vector3(x, y, volume.Min.Z - Below), Vector3.Zero, Vector3.Zero, Contents.PlayerSolid);
