@@ -16,7 +16,7 @@ public class WholeCollectionTests(ITestOutputHelper output)
     /// <summary>A map unit is about an inch, so a strip under this can't be seen.</summary>
     private const float VisibleHeight = 1f;
 
-    private static string? FindMaps()
+    internal static string? FindMaps()
     {
         for (DirectoryInfo? dir = new(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {

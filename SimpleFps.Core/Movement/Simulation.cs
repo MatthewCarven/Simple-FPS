@@ -1,5 +1,6 @@
 using System.Numerics;
 using SimpleFps.Core.Collision;
+using SimpleFps.Core.Objects;
 using SimpleFps.Core.Sounds;
 
 namespace SimpleFps.Core.Movement;
@@ -9,7 +10,8 @@ namespace SimpleFps.Core.Movement;
 /// bot and later a network client are all just sources of commands, which is what will let this
 /// run as a server without a rewrite.
 /// </summary>
-public sealed class Simulation(ICollisionWorld world, MoveSettings settings)
+/// <param name="objects">The map's triggers, teleporters and so on. None if left out.</param>
+public sealed class Simulation(ICollisionWorld world, MoveSettings settings, MapObjects? objects = null)
 {
     private readonly PlayerMove _move = new(world, settings);
     private readonly List<PlayerState> _players = [];
@@ -18,6 +20,8 @@ public sealed class Simulation(ICollisionWorld world, MoveSettings settings)
 
     /// <summary>What the simulation wants heard: one-off sounds for the game to take, and loops.</summary>
     public SoundEvents Sounds { get; } = new();
+
+    public MapObjects Objects { get; } = objects ?? MapObjects.Empty();
 
     public IReadOnlyList<PlayerState> Players => _players;
 
@@ -40,13 +44,17 @@ public sealed class Simulation(ICollisionWorld world, MoveSettings settings)
     /// <summary>Advances one tick, with one command for each player.</summary>
     public void Tick(ReadOnlySpan<MoveCommand> commands)
     {
+        Objects.ClearEvents();
         for (int i = 0; i < _players.Count; i++)
         {
             PlayerState state = _players[i];
             FireTestGun(ref state, commands[i]);
             _move.Step(ref state, commands[i]);
+            Objects.Touch(i, ref state, commands[i], Settings);
             _players[i] = state;
         }
+
+        Objects.Advance();
     }
 
     /// <summary>A stand-in gun for feeling recoil, until real weapons arrive in milestone 5.</summary>

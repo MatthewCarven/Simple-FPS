@@ -18,7 +18,7 @@ instead of snagging on them, and every shot and blast shoves you about.
 | Air control | Almost none, like ice. To change direction you touch down. |
 | Hop landing | Turning on landing costs speed. Gentle curves stay fast, hard corners slow you down. |
 | Pushes | Every explosion shoves you. Gunfire pushes both shooter and target a little, so your own gun steers you mid-hop. |
-| Map objects | Agreed 2026-11-25. Teleporters keep your speed, turned to face the exit, where the original stopped you dead. Jumping off a moving lift or train keeps its speed, so lift launches and train surfing are tricks. Teleporters get our own glowing pad, since the original's model isn't ours. Sounds come in with map objects instead of waiting for guns. |
+| Map objects | Agreed 2026-11-25. Teleporters keep your speed, turned to face the exit, where the original stopped you dead. Jumping off a moving lift or train keeps its speed, so lift launches and train surfing are tricks. Teleporters get our own glowing pad, since the original's model isn't ours. Sounds come in with map objects instead of waiting for guns. Settled by hand at 4b: a push zone only takes hold of you on its own floor or while you're moving up through it, so you can fall past a jump pad, and a jump pad keeps your speed while you hold a movement key. A tuning panel switch brings back the original's push zones. |
 | Sounds | Agreed 2026-11-25 (4a). Looping sounds fade as in the original, full volume within 80 units and silent by about 413, whatever the map's keys say, since that's what the maps' authors heard. One-off sounds follow the map's attenuation and volume. Both are cut off as in the original: loops by the map's visibility data from around your eye and a 400-unit limit, one-offs by what can be heard from their spot. |
 | Server movement | Agreed 2026-11-08. Each server owns its movement settings, and only its host (or admins they name) can change them. A change is announced to everyone at once and takes effect at the next round. The announcement carries a picture the game draws itself: a jump run with the old numbers and the new, both arcs drawn, plus the old and new values. Servers with changed movement get a badge and a one-line summary, like "low gravity, fast run", in the server list. |
 | Lighting | Cheap. Each map's own baked light, plus small moving lights on energy rounds, muzzle flashes and explosions. |
@@ -98,7 +98,16 @@ gravity 800, jump 270, step 18, body 32 wide and 56 tall. Our changes:
 damage, fire rate, knockback, recoil, and optional light. Code is only needed for each new behaviour:
 instant hit, projectile, guided, homing, placed gadget, turret.
 
-**Lighting.** Baked light goes in as a texture layer. Moving lights are small and cast no shadows.
+**Lighting.** Baked light goes in as a texture layer. Moving lights are small and cast no shadows. Since 4b
+the world shaders give the baked light out as emission and take small run-time lights on top, with ambient
+light and shine off, so a surface with no light near looks exactly as it did unshaded. The first such light is
+the teleporter pad's.
+
+**Map objects.** Built at 4b: every entity that exists in deathmatch becomes a map object
+(`SimpleFps.Core/Objects`), spawned from the bake and run inside the simulation. Objects find each other by
+name, and an event list each tick tells the game what to show or play. Classes not built yet are listed once
+per map. Push zones work out their own floor as the map loads, which is what lets them act only on someone
+standing on it (or rising), and they judge everyone as they were when the tick's touching began.
 
 **Bake.** One file per map, holding meshes, the light atlas, collision, entities and bot paths. Kept in
 `cache/`, keyed on file hash and bake version, so changing the format just re-bakes. New maps can be made
@@ -129,7 +138,8 @@ Each is about one session, and each ends in something you can run.
    teleporters and the maps' ambient sound spots (moved from milestone 5, agreed 2026-11-25). Objects
    run inside the simulation at 60 ticks, so online play later needs no rewrite. Anything that needs
    damage waits for milestone 5: buttons you shoot, walls that break, and crushing. Until then a blocked
-   door or lift backs off. Monsters in single-player maps are ignored.
+   door or lift backs off. Monsters in single-player maps are ignored. 4b (triggers, teleporters, push
+   and hurt zones) built 2026-11-25, and tried by hand on `q2pduel1`.
 5. **Guns.** A few weapons, damage, knockback, recoil, energy round lights, pickups placed from the map's own item spots.
    Also the map objects that need damage: buttons you shoot, walls that break, crushing, hurt zones.
 6. **Bots.** Paths generated at bake time, then a real deathmatch. This is the first full game. MD2 models

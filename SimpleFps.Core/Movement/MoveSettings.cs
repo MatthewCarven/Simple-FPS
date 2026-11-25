@@ -44,6 +44,14 @@ public sealed class MoveSettings
     /// <summary>Lets you crouch in mid-air to fit low openings. Off, as agreed in the plan.</summary>
     public bool AllowCrouchJump { get; set; }
 
+    /// <summary>
+    /// Push zones act as in the original game: on anyone touching them, so they catch you as you fall
+    /// into them and push you from a ledge at their edge, and they set your speed outright. Off since
+    /// Matthew tried it (2026-11-25): a push zone takes hold of you on its own floor, or while you're
+    /// moving up through it, and a jump pad keeps your speed while you hold a movement key.
+    /// </summary>
+    public bool OriginalPushZones { get; set; }
+
     /// <summary>Recoil can't push you past this speed in the direction it's pushing.</summary>
     public float RecoilTopSpeed { get; set; } = 700f;
 

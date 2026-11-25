@@ -74,6 +74,15 @@ public struct PlayerState
     /// <summary>Ticks until the test gun can fire again.</summary>
     public int AttackCooldown;
 
+    /// <summary>
+    /// Counts trips through teleporters. Whoever shows this player watches it change, to jump the
+    /// view instead of sliding it there, and to turn it to <see cref="TeleportYaw"/>.
+    /// </summary>
+    public int Teleports;
+
+    /// <summary>Which way the last teleporter's exit faced, in degrees.</summary>
+    public float TeleportYaw;
+
     public static PlayerState At(Vector3 position) => new()
     {
         Position = position,

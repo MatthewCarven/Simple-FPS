@@ -18,6 +18,7 @@ public partial class TuningPanel : CanvasLayer
     private readonly MoveSettings _defaults = new();
     private MoveSettings _settings = null!;
     private CheckBox _crouchJump = null!;
+    private CheckBox _padsCatch = null!;
 
     public bool IsOpen => _panel.Visible;
 
@@ -56,6 +57,10 @@ public partial class TuningPanel : CanvasLayer
         _crouchJump = new CheckBox { Text = "Allow crouching in mid-air", ButtonPressed = settings.AllowCrouchJump };
         _crouchJump.Toggled += on => _settings.AllowCrouchJump = on;
         rows.AddChild(_crouchJump);
+
+        _padsCatch = new CheckBox { Text = "Push zones as in the original: catch you anywhere", ButtonPressed = settings.OriginalPushZones };
+        _padsCatch.Toggled += on => _settings.OriginalPushZones = on;
+        rows.AddChild(_padsCatch);
 
         var reset = new Button { Text = "Reset all to defaults" };
         reset.Pressed += Reset;
@@ -107,5 +112,7 @@ public partial class TuningPanel : CanvasLayer
 
         _settings.AllowCrouchJump = _defaults.AllowCrouchJump;
         _crouchJump.SetPressedNoSignal(_defaults.AllowCrouchJump);
+        _settings.OriginalPushZones = _defaults.OriginalPushZones;
+        _padsCatch.SetPressedNoSignal(_defaults.OriginalPushZones);
     }
 }
