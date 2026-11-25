@@ -447,11 +447,19 @@ headless only, and a sound heard everywhere (attenuation -1), which plays unplac
 wasn't compared with the previous commit: the simulation only gained the sounds property, and the bake tests
 still match collision to the bit. Closed doors don't cut sounds off yet, which waits for doors in 4c.
 
-Fixed after review from the planning session: quitting with sounds playing made Godot warn "6 ObjectDB instances
-were leaked at exit" (`redpen`'s smoke test). A player stops its sound when freed, but the audio thread only drops
-a stopped sound on its next turns, and the game quit before it had any. Every way out now goes through
-`Main.QuitGame`, which frees the sounds and waits 0.1 s first, the window's close button included (Godot's own
-quit on close is turned off for that). No warning on `redpen`, `ringbase` or the map-list route, and a bad map still
-exits with 1. `--quit-after 300` on `redpen`, which quits from inside Godot, still warns, since nothing of ours runs
-then; nobody plays that way. While checking, the smoke test's hop came out differently from earlier in the day:
-`tuning.json` was saved at 16:33 during Matthew's listen, with `Accelerate` 13 where the default is 10.
+Fixed after review from the planning session, in two goes: quitting with sounds playing made Godot warn "6 ObjectDB
+instances were leaked at exit" on `redpen`. `--verbose` named them: a WAV stream and its playback for each sound
+playing. Godot's 4.7.1 source explains why. A stopped playback stays in the audio server's live list until the
+audio thread next mixes, about every 93 ms headless (4,096 samples at a time), and any still in that list at exit
+leak. A playback the audio thread has dropped is freed by the main thread a frame later, or with the audio server
+at exit. My first fix waited 0.1 s before quitting, which is right on the edge: the planning session saw the
+warning in 3 of 4 runs while the machine was busy. Now every way out goes through `Main.QuitGame`, which stops each
+player, clears its stream, and waits until two mixes have started since the stop (the time since the last mix
+only goes down when a new one starts). That means one whole mix has run, then it waits one more frame. A 3 s timer
+is only a backstop, for a machine with no audio running. The window's close button goes through it too, so
+Godot's own quit on close is off. Checked: 10 runs in a row on `redpen` and 12 more with four running at once,
+no warning in any, each quit waiting 111 to 187 ms. Also clean on `ringbase` and the map-list route, and a bad
+map still exits with 1. Not checked: the close button, which needs a window. `--quit-after N` still warns,
+since it quits from inside Godot before any of our code runs; only tests quit that way. While checking, the
+smoke test's hop came out differently from earlier in the day: `tuning.json` was saved at 16:33 during
+Matthew's listen, with `Accelerate` 13 where the default is 10.

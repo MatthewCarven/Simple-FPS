@@ -38,8 +38,8 @@ public partial class Main : Node
     private const int FramesBeforeShot = 150;
     private const int SmokeTestTicks = 240;
 
-    /// <summary>Long enough for the audio thread to let go of sounds that were just stopped.</summary>
-    private const double SoundsLetGoSeconds = 0.1;
+    /// <summary>The longest quitting waits for the audio thread to let go of the sounds.</summary>
+    private const ulong QuitBackstopMs = 3000;
 
     private const string Controls =
         "WASD move, Space jump (hold to hop), Ctrl crouch, left mouse test recoil\n" +
@@ -62,6 +62,7 @@ public partial class Main : Node
     private MapView? _view;
     private WorldTextures? _textures;
     private WorldSounds? _sounds;
+    private bool _quitting;
     private LocalPlayer? _player;
     private BakedMap? _map;
     private SysVector3 _spawn;
@@ -230,17 +231,46 @@ public partial class Main : Node
     }
 
     /// <summary>
-    /// Quits, stopping the map's sounds first and giving the audio thread a moment to let go of
-    /// them. A stopped sound is only dropped on the audio thread's next turns, so quitting straight
-    /// away left the sounds still playing for Godot to report as leaked at exit.
+    /// Quits, stopping the map's sounds first and waiting until the audio thread has let go of
+    /// them. Godot keeps a stopped sound in the audio server's list until the audio thread next
+    /// mixes (every 93 ms headless), and any still in that list at exit are reported as leaked:
+    /// a WAV stream and its playback for each sound playing. So this waits for two mixes to start
+    /// after the stop, which means one whole mix has run since, then one more frame for the main
+    /// thread to free what the mix let go. A sound let go but not yet freed is freed with the audio
+    /// server at exit. The timer is only a backstop, for a machine with no audio running at all.
     /// </summary>
     private async void QuitGame(int exitCode = 0)
     {
+        if (_quitting)
+        {
+            return;
+        }
+
+        _quitting = true;
         if (_sounds is not null)
         {
+            List<ulong> held = _sounds.StopForQuit();
             _sounds.QueueFree();
             _sounds = null;
-            await ToSignal(GetTree().CreateTimer(SoundsLetGoSeconds), SceneTreeTimer.SignalName.Timeout);
+
+            ulong started = Time.GetTicksMsec();
+            int frames = 0, mixes = 0;
+            double sinceMix = AudioServer.GetTimeSinceLastMix();
+            while (mixes < 2 && held.Any(GodotObject.IsInstanceIdValid) && Time.GetTicksMsec() - started < QuitBackstopMs)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                frames++;
+
+                // The time since the last mix only ever goes down when a new mix starts.
+                double now = AudioServer.GetTimeSinceLastMix();
+                mixes += now < sinceMix ? 1 : 0;
+                sinceMix = now;
+            }
+
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            int left = held.Count(GodotObject.IsInstanceIdValid);
+            string how = mixes >= 2 || left == 0 ? "let go" : "NOT let go, gave up";
+            GD.Print($"quit: {held.Count} sound objects {how} after {mixes} mixes, {frames + 1} frames, {Time.GetTicksMsec() - started} ms; {held.Count - left} freed, {left} to be freed at exit");
         }
 
         GetTree().Quit(exitCode);

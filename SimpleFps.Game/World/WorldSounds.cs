@@ -88,14 +88,68 @@ public partial class WorldSounds : Node3D
 
     /// <summary>
     /// Lets go of the streams when the map closes, rather than leaving them to the garbage
-    /// collector. The players stop themselves as they're freed. A game that quits needs to give the
-    /// audio thread a moment after that, which <see cref="Main"/> does.
+    /// collector. The players stop themselves as they're freed.
     /// </summary>
-    public override void _ExitTree()
+    public override void _ExitTree() => ReleaseStreams(null);
+
+    /// <summary>
+    /// Stops every sound for good and lets go of every stream, ahead of quitting. Returns the
+    /// instance ids of the sounds' playbacks and streams, so <see cref="Main"/> can see when Godot
+    /// has freed them.
+    /// </summary>
+    public List<ulong> StopForQuit()
+    {
+        SetProcess(false);
+        var held = new List<ulong>();
+        foreach (Node player in _loopPlayers.OfType<Node>().Concat(_oneOffs.Select(o => o.Player)))
+        {
+            switch (player)
+            {
+                case AudioStreamPlayer3D placed:
+                    if (placed.HasStreamPlayback())
+                    {
+                        Hold(placed.GetStreamPlayback(), held);
+                    }
+
+                    placed.Stop();
+                    placed.Stream = null;
+                    break;
+
+                case AudioStreamPlayer everywhere:
+                    if (everywhere.HasStreamPlayback())
+                    {
+                        Hold(everywhere.GetStreamPlayback(), held);
+                    }
+
+                    everywhere.Stop();
+                    everywhere.Stream = null;
+                    break;
+            }
+        }
+
+        ReleaseStreams(held);
+        return held;
+    }
+
+    /// <summary>Notes an object's id and drops our own hold on it.</summary>
+    private static void Hold(GodotObject thing, List<ulong> held)
+    {
+        held.Add(thing.GetInstanceId());
+        thing.Dispose();
+    }
+
+    private void ReleaseStreams(List<ulong>? held)
     {
         foreach (AudioStreamWav stream in _loopStreams.Values.Concat(_onceStreams.Values))
         {
-            stream.Dispose();
+            if (held is null)
+            {
+                stream.Dispose();
+            }
+            else
+            {
+                Hold(stream, held);
+            }
         }
 
         _loopStreams.Clear();
