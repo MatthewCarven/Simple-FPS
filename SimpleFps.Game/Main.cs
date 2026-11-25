@@ -38,6 +38,9 @@ public partial class Main : Node
     private const int FramesBeforeShot = 150;
     private const int SmokeTestTicks = 240;
 
+    /// <summary>Long enough for the audio thread to let go of sounds that were just stopped.</summary>
+    private const double SoundsLetGoSeconds = 0.1;
+
     private const string Controls =
         "WASD move, Space jump (hold to hop), Ctrl crouch, left mouse test recoil\n" +
         "Tab tuning panel, R respawn, V fly (Q/E down/up, Shift fast), Esc menu (Resume, Map list, Quit)\n" +
@@ -73,6 +76,7 @@ public partial class Main : Node
         GD.Print($"{GameInfo.Title}: Godot {engine}, {GameInfo.TickRate} ticks a second");
 
         Engine.PhysicsTicksPerSecond = GameInfo.TickRate;
+        GetTree().AutoAcceptQuit = false;
         RenderingServer.SetDefaultClearColor(SkyColour);
 
         _status = new Label { Position = new Vector2(16, 12) };
@@ -107,7 +111,7 @@ public partial class Main : Node
         _pause.Build();
         _pause.ResumeChosen += Resume;
         _pause.MapListChosen += BackToList;
-        _pause.QuitChosen += () => GetTree().Quit();
+        _pause.QuitChosen += () => QuitGame();
         AddChild(_pause);
 
         string? mapFlag = Flag(args, "--map=");
@@ -141,7 +145,7 @@ public partial class Main : Node
             }
 
             GD.Print(error is null && RunSmokeTest() && CheckSounds() ? "smoke test ok" : "smoke test failed");
-            GetTree().Quit(error is null ? 0 : 1);
+            QuitGame(error is null ? 0 : 1);
             return;
         }
 
@@ -170,6 +174,14 @@ public partial class Main : Node
         else
         {
             OpenMapList(error);
+        }
+    }
+
+    public override void _Notification(int what)
+    {
+        if (what == NotificationWMCloseRequest)
+        {
+            QuitGame();
         }
     }
 
@@ -215,6 +227,23 @@ public partial class Main : Node
             string textures = _textureSet == TextureSet.HighRes ? "high-res" : "original";
             _status.Text = $"{_mapTitle}, {Engine.GetFramesPerSecond()} fps, {textures} textures\n{_player?.Status}\n{Controls}";
         }
+    }
+
+    /// <summary>
+    /// Quits, stopping the map's sounds first and giving the audio thread a moment to let go of
+    /// them. A stopped sound is only dropped on the audio thread's next turns, so quitting straight
+    /// away left the sounds still playing for Godot to report as leaked at exit.
+    /// </summary>
+    private async void QuitGame(int exitCode = 0)
+    {
+        if (_sounds is not null)
+        {
+            _sounds.QueueFree();
+            _sounds = null;
+            await ToSignal(GetTree().CreateTimer(SoundsLetGoSeconds), SceneTreeTimer.SignalName.Timeout);
+        }
+
+        GetTree().Quit(exitCode);
     }
 
     private static string? Flag(string[] args, string prefix) =>
@@ -498,7 +527,7 @@ public partial class Main : Node
         }
 
         GD.Print(ok ? "smoke test ok" : "smoke test failed");
-        GetTree().Quit(ok ? 0 : 1);
+        QuitGame(ok ? 0 : 1);
     }
 
     private async Task<bool> PickFromList(string name)
@@ -524,6 +553,6 @@ public partial class Main : Node
         await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
         GetViewport().GetTexture().GetImage().SavePng(path);
         GD.Print($"saved {path} at {Engine.GetFramesPerSecond()} fps");
-        GetTree().Quit();
+        QuitGame();
     }
 }

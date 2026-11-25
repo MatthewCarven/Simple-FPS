@@ -446,3 +446,12 @@ Not checked: no one-off sound has been heard, because nothing plays one yet. The
 headless only, and a sound heard everywhere (attenuation -1), which plays unplaced, hasn't run at all. Movement
 wasn't compared with the previous commit: the simulation only gained the sounds property, and the bake tests
 still match collision to the bit. Closed doors don't cut sounds off yet, which waits for doors in 4c.
+
+Fixed after review from the planning session: quitting with sounds playing made Godot warn "6 ObjectDB instances
+were leaked at exit" (`redpen`'s smoke test). A player stops its sound when freed, but the audio thread only drops
+a stopped sound on its next turns, and the game quit before it had any. Every way out now goes through
+`Main.QuitGame`, which frees the sounds and waits 0.1 s first, the window's close button included (Godot's own
+quit on close is turned off for that). No warning on `redpen`, `ringbase` or the map-list route, and a bad map still
+exits with 1. `--quit-after 300` on `redpen`, which quits from inside Godot, still warns, since nothing of ours runs
+then; nobody plays that way. While checking, the smoke test's hop came out differently from earlier in the day:
+`tuning.json` was saved at 16:33 during Matthew's listen, with `Accelerate` 13 where the default is 10.

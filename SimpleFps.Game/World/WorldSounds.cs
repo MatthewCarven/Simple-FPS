@@ -86,6 +86,22 @@ public partial class WorldSounds : Node3D
         }
     }
 
+    /// <summary>
+    /// Lets go of the streams when the map closes, rather than leaving them to the garbage
+    /// collector. The players stop themselves as they're freed. A game that quits needs to give the
+    /// audio thread a moment after that, which <see cref="Main"/> does.
+    /// </summary>
+    public override void _ExitTree()
+    {
+        foreach (AudioStreamWav stream in _loopStreams.Values.Concat(_onceStreams.Values))
+        {
+            stream.Dispose();
+        }
+
+        _loopStreams.Clear();
+        _onceStreams.Clear();
+    }
+
     /// <summary>Moves the listener's ear, then starts, stops and sets the volume of every sound to match.</summary>
     public void Update(SysVector3 ear)
     {
