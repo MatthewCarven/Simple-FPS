@@ -378,3 +378,62 @@ turned to face the exit; jumping off a moving lift or train keeps its speed; tel
 glowing pad, since the original's model isn't in the content and isn't ours to ship; and sounds move from
 milestone 5 into milestone 4. Split into 4a sounds and 4b triggers and teleporters, side by side in
 worktrees, then 4c moving things, which needs both. Things that need damage wait for milestone 5.
+
+## 2026-11-25: milestone 4b, triggers, teleporters and push zones
+
+Built in its own worktree beside 4a. Maps now have live objects, spawned from the bake's entities and run
+inside the simulation at 60 ticks (`SimpleFps.Core/Objects`), so online play later needs no rewrite.
+Written from how the entities are documented to behave, not from the original game's code.
+
+What's in:
+- Names and targets: firing sets off everything its `target` names, after its `delay`, takes out what its
+  `killtarget` names, and shows its `message` to the player who set it off. A chain 64 deep is a loop in the
+  map and is cut off. Entities flagged as not in deathmatch are left out (677 across the collection).
+- `trigger_multiple` (with `wait`, 0.2 s if unset), `trigger_once`, `trigger_relay`, `trigger_counter`
+  ("2 more to go..."), `trigger_always` and `func_timer` (with `random`, `pausetime` and switching on and off).
+  The documented flags work: starts off until used, players can't set it off, and a trigger with an angle
+  only fires for someone facing that way. Random spreads come from a fixed seed, so a server and its clients
+  will agree.
+- Teleporters (`misc_teleporter`, and the one `trigger_teleport`) go to the first entity their target names,
+  of any class, as the original did, which is how 30 teleporters aimed at `info_notnull`, `path_corner` and
+  the like still work. As Matthew chose: your flat speed comes out pointed the way the exit faces, you face it
+  too with the view levelled, and up and down speed is kept. Most exits leave your feet exactly on the floor,
+  so arrival lifts you by the smallest step that's clear (1/32 of a unit for 70 of them, up to 24 for a few).
+- Push zones set your velocity on every tick you're in them, at the map's direction (an angle of -1 is up,
+  -2 down) and its speed times ten, as the original read it. The four with no speed, which the original took
+  as 10,000, are held to 4,000, the fastest any map asks for by number. My call, not Matthew's. The push-once
+  flag works.
+- Hurt zones are found and kept, with their damage and on/off flags, ready for milestone 5. They don't hurt.
+- Touching uses each brush model's box, with both boxes grown by a unit, as the original did. The old pad's
+  touch box is small, so you have to step near a pad's middle.
+- Classes not built yet are listed once per map in the log, with counts. Items lead, then `target_speaker`
+  (4a) and `func_plat` (4c).
+- The game draws our own pads, as Matthew chose: a glowing disc with a small light that casts no shadow at
+  each way in, and a plain dim disc at each way out. For the light to show at all, the world shaders now take
+  small run-time lights on top of the baked light, which milestone 5's moving lights need anyway. Map messages
+  show in the middle of the screen for three seconds, which Matthew chose too. Each teleport and push is logged
+  with speeds.
+
+Checked:
+- 296 tests pass: the 247 from before and 49 new, over small worlds, plus a whole-collection check. The build
+  has no warnings.
+- The collection check spawns all 375 maps without errors, touches every trigger and runs ten seconds of
+  timers. Every teleporter with a target finds its exit, and a body fits somewhere touching each one (one on
+  `rez1` only crouched, in a 52-unit alcove). Five teleporters have no target and go nowhere (`q2lt1`, and
+  four on `ra2map20`, whose arena mod placed players itself). Two exits on single-player `q2e3m1` stay blocked
+  after lifting and are left to movement's unsticking.
+- Movement is unchanged away from objects: the smoke test on `ringbase` ends at exactly the same position and
+  speed from spawns 0 and 3 with the map's teleporter live in its simulation, and a test runs 600 ticks of
+  hopping and firing beside live objects that never touch the player, matching a plain simulation exactly.
+- The world under the new shaders matches the old unshaded look to the pixel in windowed screenshots of
+  `q2duel5` and `rexro`, and settled fps is the same (144 and 145, old and new shader runs alternated).
+- Matthew played `q2pduel1` and said both work well. The log shows 8 teleports, each coming out at the speed
+  it went in, facing its exit; a sideways push at 400; and the jump pad's 900 up, then 300 onto the upper level.
+  He found you can get back down past the jump pad if you time a fall near its edge. Simulating 64,000 drops,
+  some steered, into that shaft found no way down through a push zone itself: the zones fill only part of the
+  shaft, and the open part beside them leads down. The original used the same rule, so it's the map as built.
+
+Not checked: the pad's light strength and the exit disc's dimness weren't commented on. Telefrags, damage in
+hurt zones, and the teleporter's and push zone's sounds wait for later (TODO.md). Doors, lifts and anything
+else that moves or blocks is 4c's. `q2dm1_mcp` aims two push zones at targets, a feature of a later game; here
+they push along their angle as the original did.

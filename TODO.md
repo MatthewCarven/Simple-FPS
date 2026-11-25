@@ -59,12 +59,17 @@ zones 40, relays 24, hurt zones 23, `func_wall` 65, ambient sound spots (`target
       wait for 4b's triggers.
 
 4b, triggers and teleporters:
-- [ ] The map object system in the simulation: names and targets, touch triggers (`trigger_multiple`,
-      `trigger_once`), `trigger_relay`, `trigger_counter`, `trigger_always`, `func_timer`, delays.
-- [ ] Teleporters (`misc_teleporter` to `misc_teleporter_dest`): keep speed, turned to face the exit
-      (Matthew). Our own glowing pad with a soft light (Matthew).
-- [ ] Push zones (`trigger_push`), keeping the map's speed and direction.
-- [ ] Hurt zones (`trigger_hurt`) found and marked, ready for damage in milestone 5.
+- [x] The map object system in the simulation: names and targets, touch triggers (`trigger_multiple`,
+      `trigger_once`), `trigger_relay`, `trigger_counter`, `trigger_always`, `func_timer`, delays. Done
+      2026-11-25, with killtargets and map messages on screen (Matthew).
+- [x] Teleporters (`misc_teleporter` to `misc_teleporter_dest`): keep speed, turned to face the exit
+      (Matthew). Our own glowing pad with a soft light (Matthew). Done, with a dim disc at each exit
+      (Matthew). Matthew went through them on `q2pduel1` and said they work well.
+- [x] Push zones (`trigger_push`), keeping the map's speed and direction. Done, and tried by hand on
+      `q2pduel1`.
+- [x] Hurt zones (`trigger_hurt`) found and marked, ready for damage in milestone 5. Done.
+- [ ] Matthew: is the teleporter pad's light bright enough, and the exit disc dim enough? Neither was
+      commented on. Both are constants at the top of `TeleporterPads.cs`.
 
 4c, moving things (after 4a and 4b):
 - [ ] Doors (`func_door`, `func_door_rotating`, `func_door_secret`), lifts (`func_plat`), trains
@@ -73,11 +78,14 @@ zones 40, relays 24, hurt zones 23, `func_wall` 65, ambient sound spots (`target
 - [ ] Players collide with them, ride them, and get pushed by them. A blocked door or lift backs off
       until damage exists.
 - [ ] Jumping off a moving lift or train keeps its speed (Matthew).
-- [ ] Their sounds, from 4a.
+- [ ] Their sounds, from 4a. Also the teleporter's, at both ends (a TODO in `Teleporter.Touch`), and the
+      push zone's wind, from the `Pushed` event. Triggered `target_speaker`s can listen for the `Used` event.
+- [ ] Trigger sounds (`sounds` and `noise` keys on triggers), which 4b left out.
 
 ## Milestone 5
 - [ ] The map objects that need damage: buttons you shoot (`health` key), `func_explosive`, crushing
-      (`dmg` key), hurt zones.
+      (`dmg` key), hurt zones (kept by 4b in `MapObjects.HurtZones`, with their damage and flags).
+- [ ] Telefrags: arriving through a teleporter onto someone.
 
 ## Milestone 6
 - [ ] Bake MD2 models (moved from milestone 3).
@@ -98,6 +106,8 @@ zones 40, relays 24, hurt zones 23, `func_wall` 65, ambient sound spots (`target
 - [ ] 33 maps are missing at least one texture. Most missing names are `gothic_*`, so check whether
       those maps came from another game's texture set.
 - [ ] Lava and slime do nothing yet. Add damage when health exists.
+- [ ] Push zones aimed at a target, a feature of a later game (`q2dm1_mcp`'s two). They push along their
+      angle for now, as the original did. It's an edit of an original level, so low priority.
 - [ ] Long traces, such as hitscan weapons, should walk the map's tree along the line. The current
       search uses a box around the whole trace, which is fine for movement but slow across a big map.
 - [ ] Unzip or read `textures/1492.zip` and `textures/alk09.zip`.

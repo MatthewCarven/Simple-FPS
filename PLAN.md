@@ -96,7 +96,15 @@ gravity 800, jump 270, step 18, body 32 wide and 56 tall. Our changes:
 damage, fire rate, knockback, recoil, and optional light. Code is only needed for each new behaviour:
 instant hit, projectile, guided, homing, placed gadget, turret.
 
-**Lighting.** Baked light goes in as a texture layer. Moving lights are small and cast no shadows.
+**Lighting.** Baked light goes in as a texture layer. Moving lights are small and cast no shadows. Since 4b
+the world shaders give the baked light out as emission and take small run-time lights on top, with ambient
+light and shine off, so a surface with no light near looks exactly as it did unshaded. The first such light is
+the teleporter pad's.
+
+**Map objects.** Built at 4b: every entity that exists in deathmatch becomes a map object
+(`SimpleFps.Core/Objects`), spawned from the bake and run inside the simulation. Objects find each other by
+name, and an event list each tick tells the game what to show or play. Classes not built yet are listed once
+per map.
 
 **Bake.** One file per map, holding meshes, the light atlas, collision, entities and bot paths. Kept in
 `cache/`, keyed on file hash and bake version, so changing the format just re-bakes. New maps can be made
@@ -125,7 +133,8 @@ Each is about one session, and each ends in something you can run.
    teleporters and the maps' ambient sound spots (moved from milestone 5, agreed 2026-11-25). Objects
    run inside the simulation at 60 ticks, so online play later needs no rewrite. Anything that needs
    damage waits for milestone 5: buttons you shoot, walls that break, and crushing. Until then a blocked
-   door or lift backs off. Monsters in single-player maps are ignored.
+   door or lift backs off. Monsters in single-player maps are ignored. 4b (triggers, teleporters, push
+   and hurt zones) built 2026-11-25, and tried by hand on `q2pduel1`.
 5. **Guns.** A few weapons, damage, knockback, recoil, energy round lights, pickups placed from the map's own item spots.
    Also the map objects that need damage: buttons you shoot, walls that break, crushing, hurt zones.
 6. **Bots.** Paths generated at bake time, then a real deathmatch. This is the first full game. MD2 models
