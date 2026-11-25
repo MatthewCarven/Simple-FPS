@@ -470,7 +470,9 @@ Checked:
 - The smoke test on `ringbase` still ends at exactly the same position and speed from spawns 0 and 3.
 - By hand: Matthew crouched off `q2pduel1`'s ledge down the shaft (the log shows the pad throwing him from its
   floor, crouched), walked into the pad from the corridor and said it works now, and ran onto `q2ztn3dm1`'s
-  pads holding forward and said his speed carries through (the log shows 300 across, 715 up).
+  pads holding forward and said his speed carries through (the log shows 300 across, 715 up). He finds it
+  more nuanced now: hit a pad at full speed and you can run into the wall ahead before you're up top, so some
+  pads want you a little slower and others faster. He likes that as a skill, so it stays.
 
 Not checked: walking off `q2pduel1`'s ledge standing up, by hand. Sideways wind and carry zones on other maps
 no longer push you while you fall through them, which no one has tried; `q2e3m5`'s chains of pushes are the
