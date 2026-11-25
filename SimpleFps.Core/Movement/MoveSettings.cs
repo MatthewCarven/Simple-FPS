@@ -45,11 +45,11 @@ public sealed class MoveSettings
     public bool AllowCrouchJump { get; set; }
 
     /// <summary>
-    /// Jump pads act on anyone touching them, as in the original game: they catch you as you fall
-    /// into them, and throw you from a ledge at their edge. Off since Matthew tried it (2026-11-25):
-    /// a pad throws you up from its own floor, or while you're moving up through it.
+    /// Push zones act on anyone touching them, as in the original game: they catch you as you fall
+    /// into them, and push you from a ledge at their edge. Off since Matthew tried it (2026-11-25):
+    /// a push zone acts on you on its own floor, or while you're moving up through it.
     /// </summary>
-    public bool OriginalJumpPads { get; set; }
+    public bool OriginalPushZones { get; set; }
 
     /// <summary>Recoil can't push you past this speed in the direction it's pushing.</summary>
     public float RecoilTopSpeed { get; set; } = 700f;

@@ -271,7 +271,7 @@ public class MapObjectTests
     public void APushZoneSetsYourVelocityEveryTickYouAreInIt()
     {
         MapObjects map = Spawn("""{ "classname" "trigger_push" "model" "*1" "angle" "90" "speed" "50" }""", Cube(Vector3.Zero, 64));
-        PlayerState s = StandingAt(0, 0);
+        PlayerState s = StandingAt(0, 0) with { OnGround = true };
         s.Velocity = new Vector3(100, 0, 0);
 
         Touch(map, ref s);
@@ -350,16 +350,41 @@ public class MapObjectTests
         Assert.Equal(700f, s.Velocity.Z);
     }
 
-    [Fact]
-    public void ASidewaysPushCatchesYouWhileFalling()
+    [Theory]
+    [InlineData(false, -300f, false)] // falling through it
+    [InlineData(false, 0f, false)] // stepping off an edge into it
+    [InlineData(false, 100f, true)] // rising into it
+    [InlineData(true, 0f, true)] // walking on its floor
+    public void ASidewaysPushActsOnItsFloorAndWhileYouRise(bool onGround, float upward, bool pushed)
     {
         MapObjects map = Spawn("""{ "classname" "trigger_push" "model" "*1" "angle" "90" "speed" "50" }""", Cube(Vector3.Zero, 64));
-        PlayerState s = StandingAt(0, 0) with { Velocity = new Vector3(0, 0, -300) };
+        PlayerState s = StandingAt(0, 0) with { OnGround = onGround, Velocity = new Vector3(0, 0, upward) };
 
         Touch(map, ref s);
 
         Assert.False(map.PushZones[0].Lifts);
-        Assert.Equal(new Vector3(0, 500, 0), s.Velocity, new Vector3Within(0.01f));
+        Assert.Equal(pushed ? 500f : 0f, s.Velocity.Y, 0.01f);
+    }
+
+    [Fact]
+    public void StandingOnALedgeWithYourHeadInAPushZoneDoesntPushYou()
+    {
+        // Like q2pduel1's: a sideways zone floats over the shaft, 40 above the ledge beside it.
+        var world = new TestWorld().Floor().Box(new Vector3(-200, -64, 0), new Vector3(-64, 64, 128));
+        MapObjects map = MapObjects.Spawn(
+            BspEntity.Parse("""{ "classname" "trigger_push" "model" "*1" "angle" "180" "speed" "30" }"""),
+            [default, new Box(new Vector3(-64, -64, 168), new Vector3(64, 64, 240))],
+            world);
+        PlayerState s = PlayerState.At(new Vector3(-70, 0, 128 + FeetOnFloor)) with { OnGround = true };
+        Assert.True(map.PushZones[0].Volume.Touches(s.Position + s.Mins, s.Position + s.Maxs));
+        Assert.Equal(0f, map.PushZones[0].Floor!.Value, 0.1f);
+
+        Touch(map, ref s);
+        Assert.Equal(Vector3.Zero, s.Velocity);
+
+        map.ClearEvents();
+        map.Touch(0, ref s, Idle(), new MoveSettings { OriginalPushZones = true });
+        Assert.Equal(-300f, s.Velocity.X, 0.01f);
     }
 
     [Fact]
@@ -411,7 +436,7 @@ public class MapObjectTests
         Assert.Equal(0f, s.Velocity.Z);
 
         map.ClearEvents();
-        map.Touch(0, ref s, Idle(), new MoveSettings { OriginalJumpPads = true });
+        map.Touch(0, ref s, Idle(), new MoveSettings { OriginalPushZones = true });
         Assert.Equal(700f, s.Velocity.Z);
     }
 
@@ -445,7 +470,7 @@ public class MapObjectTests
         PlayerState s = StandingAt(0, 0) with { Velocity = new Vector3(0, 0, -300) };
 
         map.ClearEvents();
-        map.Touch(0, ref s, Idle(), new MoveSettings { OriginalJumpPads = true });
+        map.Touch(0, ref s, Idle(), new MoveSettings { OriginalPushZones = true });
 
         Assert.Equal(700f, s.Velocity.Z);
     }

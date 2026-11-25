@@ -72,12 +72,12 @@ public sealed class Teleporter : TouchObject
 /// Flag 1 makes it work once and then go.
 /// </summary>
 /// <remarks>
-/// A jump pad, one that pushes mostly upward, throws you only from its own floor, or while you're
-/// moving up through it, which keeps it lifting you once it has launched you (Matthew,
-/// 2026-11-25). So you can fall through one in mid-air, land on its floor and be thrown back up,
-/// and a ledge at its edge doesn't throw you just for touching it. The original acted on anyone
-/// touching it, and <see cref="MoveSettings.OriginalJumpPads"/> brings that back. Sideways and
-/// downward pushes act on anyone touching them either way.
+/// A push zone acts on you only when you're on its own floor, or while you're moving up through
+/// it, which keeps a jump pad lifting you once it has launched you (Matthew, 2026-11-25). So you
+/// can fall through one in mid-air, land on its floor and be thrown back up, and standing on a
+/// ledge at its edge with only your head in it does nothing. On q2pduel1 that lets you walk off
+/// the upper ledge down the jump pad's shaft. The original acted on anyone touching it, and
+/// <see cref="MoveSettings.OriginalPushZones"/> brings that back.
 /// </remarks>
 public sealed class PushZone : TouchObject
 {
@@ -117,15 +117,15 @@ public sealed class PushZone : TouchObject
     public bool Lifts => Velocity.Z > MathF.Abs(Speed) * LiftingZ;
 
     /// <summary>
-    /// A jump pad's own floor: the highest ground found under it as the map loads. Null if none was
-    /// found, or it isn't a jump pad, and then standing on any ground in it counts.
+    /// The zone's own floor: the highest ground found under its outline as the map loads. Null if
+    /// none was found, and then only someone with their feet in it, or nearly, is on it.
     /// </summary>
     public float? Floor { get; internal set; }
 
-    /// <summary>Whether a jump pad throws this player: standing on its own floor, or moving up through it.</summary>
-    public bool Throws(in PlayerState s, MoveSettings settings)
+    /// <summary>Whether this zone pushes this player: on its own floor, or moving up through it.</summary>
+    public bool Acts(in PlayerState s, MoveSettings settings)
     {
-        if (!Lifts || settings.OriginalJumpPads)
+        if (settings.OriginalPushZones)
         {
             return true;
         }
@@ -136,12 +136,13 @@ public sealed class PushZone : TouchObject
             return s.Velocity.Z > 0;
         }
 
-        return Floor is not { } floor || s.Position.Z + PlayerHull.Bottom <= floor + settings.StepHeight;
+        float feet = s.Position.Z + PlayerHull.Bottom;
+        return Floor is { } floor ? feet <= floor + settings.StepHeight : feet >= Volume.Min.Z - settings.StepHeight;
     }
 
     internal override void Touch(MapObjects map, int player, ref PlayerState s, in MoveCommand cmd, MoveSettings settings)
     {
-        if (!Throws(s, settings))
+        if (!Acts(s, settings))
         {
             return;
         }

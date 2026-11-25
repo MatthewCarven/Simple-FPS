@@ -102,6 +102,55 @@ public class MapObjectCollectionTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// Matthew's hand test on q2pduel1 (2026-11-25): walking off the upper ledge drops you down the
+    /// jump pad's shaft, at full speed far enough to land past the pad. Crouch-walking off lands on
+    /// the pad, which throws you back up, and its top zone carries you to the ledge. With the
+    /// original push zones the ledge's edge turns you back instead.
+    /// </summary>
+    [Fact]
+    public void OnQ2pduel1YouCanWalkOffTheLedgeDownTheJumpPadAndRideItBack()
+    {
+        string? maps = WholeCollectionTests.FindMaps();
+        if (maps is null || !File.Exists(Path.Combine(maps, "q2pduel1.bsp")))
+        {
+            output.WriteLine("No q2pduel1, so nothing was checked.");
+            return;
+        }
+
+        Q2Bsp bsp = Q2Bsp.Read(File.ReadAllBytes(Path.Combine(maps, "q2pduel1.bsp")));
+        var world = new BspCollision(bsp);
+        Box[] models = bsp.Models.Select(m => new Box(m.Mins, m.Maxs)).ToArray();
+
+        (float Lowest, PlayerState End) Walk(Vector3 start, float forward, MoveSettings settings, bool crouch = false)
+        {
+            MapObjects objects = MapObjects.Spawn(bsp.Entities, models, world);
+            var sim = new Simulation(world, settings, objects);
+            sim.AddPlayer(start - (Vector3.UnitZ * PlayerHull.SpawnLift));
+            float lowest = float.MaxValue;
+            for (int t = 0; t < 420; t++)
+            {
+                sim.Tick([new MoveCommand(90, 0, t < 120 ? forward : 0, 0, Crouch: crouch && t < 120)]);
+                lowest = MathF.Min(lowest, sim.Players[0].Position.Z);
+            }
+
+            return (lowest, sim.Players[0]);
+        }
+
+        var ledge = new Vector3(128, -230, 440.03125f);
+        (float walkedLowest, PlayerState walkedEnd) = Walk(ledge, 1, new MoveSettings());
+        (float crouchedLowest, PlayerState crouchedEnd) = Walk(ledge, 1, new MoveSettings(), crouch: true);
+        (float launchLowest, PlayerState launchEnd) = Walk(new Vector3(128, -132, 248.03125f), 0, new MoveSettings());
+        (float originalLowest, _) = Walk(ledge, 1, new MoveSettings { OriginalPushZones = true });
+        output.WriteLine($"walked off: lowest {walkedLowest:F0}, ended at {walkedEnd.Position}; crouched off: lowest {crouchedLowest:F0}, ended at {crouchedEnd.Position}; launched: ended at {launchEnd.Position}; original rule: lowest {originalLowest:F0}");
+
+        Assert.True(walkedLowest < 260, "walking off the ledge didn't get you down");
+        Assert.True(crouchedLowest < 260, "crouching off the ledge didn't get you down");
+        Assert.True(crouchedEnd.Position.Z > 400 && crouchedEnd.Position.Y < -176, "the pad didn't carry you back to the ledge");
+        Assert.True(launchEnd.Position.Z > 400 && launchEnd.Position.Y < -176, "the launch didn't reach the ledge");
+        Assert.True(originalLowest > 400, "the original rule let you off the ledge");
+    }
+
+    /// <summary>
     /// Finds somewhere a body fits and touches the teleporter, standing on its pad if it can, and
     /// checks it arrives at the exit.
     /// </summary>

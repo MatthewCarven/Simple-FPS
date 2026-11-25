@@ -155,9 +155,9 @@ public sealed class MapObjects
             map.FindExit(teleporter);
         }
 
-        foreach (PushZone pad in map.PushZones.Where(p => p.Lifts))
+        foreach (PushZone push in map.PushZones)
         {
-            pad.Floor = map.PadFloor(pad.Volume);
+            push.Floor = map.ZoneFloor(push.Volume);
         }
 
         foreach (MapObject o in map._objects)
@@ -330,11 +330,12 @@ public sealed class MapObjects
     }
 
     /// <summary>
-    /// The highest ground under a jump pad, looked for on a 5 by 5 grid across it, from its top down
-    /// to a little below its bottom. Only ground inside its outline counts, so a ledge beside the pad
-    /// isn't its floor, while a raised platform inside it is. Null if nothing is found.
+    /// The highest ground under a push zone, looked for on a 5 by 5 grid across it, from its top
+    /// down to well below its bottom, since a zone can float over the ground it belongs to. Only
+    /// ground inside its outline counts, so a ledge beside it isn't its floor, while a raised
+    /// platform inside it is. Null if nothing is found.
     /// </summary>
-    private float? PadFloor(Box volume)
+    private float? ZoneFloor(Box volume)
     {
         if (_world is null)
         {
@@ -342,7 +343,7 @@ public sealed class MapObjects
         }
 
         const int Samples = 5;
-        const float Below = 64f;
+        const float Below = 256f;
         const float ScanStep = 4f;
         float? highest = null;
         Vector3 size = volume.Max - volume.Min;
