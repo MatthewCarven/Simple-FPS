@@ -378,3 +378,71 @@ turned to face the exit; jumping off a moving lift or train keeps its speed; tel
 glowing pad, since the original's model isn't in the content and isn't ours to ship; and sounds move from
 milestone 5 into milestone 4. Split into 4a sounds and 4b triggers and teleporters, side by side in
 worktrees, then 4c moving things, which needs both. Things that need damage wait for milestone 5.
+
+## 2026-11-25: milestone 4a, sounds
+
+Built in its own worktree beside 4b. Sounds now bake to our own format and play in the world, starting with the
+maps' ambient sound spots.
+
+Asked Matthew one round, and he took both recommendations:
+- Loops fade as in the original: every looping sound is at full volume within 80 units and silent by about 413
+  (the original's "static" fade), whatever the map's attenuation and volume keys say. The keys only shape one-off
+  sounds. 3,758 loops start on, and 2,217 of them set no attenuation, so following the keys would have made busy
+  maps far louder than their authors ever heard them.
+- Sounds are cut off as in the original: a loop is heard only within 400 units, and only when its spot is in the
+  map's visibility data from around your eye (the PVS). A one-off is heard only where its spot can be heard (the
+  PHS), unless it's heard everywhere. Maps now bake their visibility data for this (`BakeFile.Version` 3), so
+  every map bakes again once.
+
+The sound folder holds 2,877 `.wav` files. 2,860 are 8- or 16-bit mono PCM. 3 are 16-bit stereo, 1 is 24-bit
+stereo, 1 is 32-bit float and 1 is IMA ADPCM. 11 aren't WAV files at all (ten are config text), and 4 hold no
+samples. Rates run from 5,500 to 88,200 a second, and 196 files have a cue point.
+
+How it works. Our own reader (`WavReader`, in Core) reads 8-, 16-, 24- and 32-bit PCM and 32-bit float, mixes
+any channels down to mono, and keeps the loop points the original used: the first cue point, and the length in a
+"mark" label after it, which can end the sound early. It refuses compressed formats and broken files with the
+reason. Each sound bakes to `cache/sounds/<path>.snd` as 16-bit mono at its own rate, keyed on a SHA-256 of the
+`.wav` and `SoundFile.Version`, in the same tagged sections as maps and textures. A map's name for a sound becomes
+a file as in the original: `.wav` is added if missing, and case and leading slashes are forgiven, as Windows did.
+
+The simulation says what to play through `Simulation.Sounds` (`SoundEvents`, in a file of its own). One-off
+`SoundEvent`s wait until the game takes them, and loops are state with an on switch and a position. A one-off
+from the same emitter cuts off the one before, for doors' start and stop sounds. `TargetSpeakers.Start` reads a
+map's speakers and adds their loops, on if they start on (flag 1). Loops that start off and speakers that play
+once wait for 4b, which only has to call `TargetSpeakers.Use` (written and tested, not called yet). The 11
+speakers marked not-in-deathmatch (flag 2048) are left out, as in the original.
+
+In the game, `WorldSounds` turns bakes into Godot streams and places a player for each loop you can hear. Which
+sounds you hear and how loud is worked out in Core (`Hearing`, `LoopMix`, `SoundFalloff`), so Godot only places
+and pans them. Copies of one loop add up but stop at full volume, since the original mixed them into one channel.
+The original capped each ear separately, and capping the total is close to that. A loop that starts playing picks
+up where its sound has got to by the clock, so copies stay in step. The overall volume is 0.7, the original's
+default.
+
+Content findings:
+- The 375 maps name 244 different sounds: 4,111 speakers, 11 trains and one worldspawn (`risc1`). 228 bake. The
+  other 16 are all missing files, such as `world/pump.wav` (`q2rdm8`), three in `q2frag1`, and Quake 3 style
+  names like `sound/world/fire1.wav` in `q2_q3dm1`.
+- All 228 are 8- or 16-bit mono PCM, and 34 have a cue point. Their bakes take 41 MB.
+- 18 speakers in the `.bsp` files sit inside walls. The original never played them, and neither do we.
+- 355 of the 363 maps have visibility data. `risc2` has the most clusters, 4,169. It brings the whole
+  collection's bakes to 692 MB, up from 639.
+- `misc/mm.wav` is cut short, and plays what's there.
+
+Checked:
+- 303 tests pass: 247 from before and 56 new. The build has no warnings.
+- Every sound the maps name bakes, reads back from disk unchanged and matches decoding its `.wav` directly, or is
+  refused with its reason. Every `.wav` in the sound folder reads (2,861) or is refused with a reason (16).
+- Our reader against Python's own `wave` module on every file: 2,857 identical. The 3 that differ run 6 samples
+  longer in ours, because their RIFF headers say the file ends 12 bytes before it really does. We read to the
+  real end, as the original did. Python can't read float, and refuses everything we refuse.
+- Every map's visibility data unpacks, covers all its leaves' clusters, and bakes and reads back byte for byte.
+- Headless smoke tests pass on `ringbase`, on `redpen` (68 loops on, 2 heard from the first spawn, and a test
+  sound played through the events), and through the map list.
+- Matthew listened on `redpen` in a window and said it sounds right. He also went on to `q2dm8` from the list,
+  and the log shows no errors.
+
+Not checked: no one-off sound has been heard, because nothing plays one yet. They're tested in Core and run
+headless only, and a sound heard everywhere (attenuation -1), which plays unplaced, hasn't run at all. Movement
+wasn't compared with the previous commit: the simulation only gained the sounds property, and the bake tests
+still match collision to the bit. Closed doors don't cut sounds off yet, which waits for doors in 4c.

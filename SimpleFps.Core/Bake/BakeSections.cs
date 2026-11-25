@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace SimpleFps.Core.Bake;
@@ -16,6 +17,24 @@ internal static class BakeSections
     public static readonly uint EndTag = Tag("END ");
 
     public static uint Tag(string name) => BitConverter.ToUInt32(Encoding.ASCII.GetBytes(name));
+
+    /// <summary>
+    /// SHA-256 of each part with its length in front, so where one file ends and the next starts
+    /// is part of the key. Textures and sounds are keyed on this.
+    /// </summary>
+    public static string Hash(IEnumerable<byte[]> parts)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        Span<byte> length = stackalloc byte[sizeof(long)];
+        foreach (byte[] part in parts)
+        {
+            BitConverter.TryWriteBytes(length, (long)part.Length);
+            hash.AppendData(length);
+            hash.AppendData(part);
+        }
+
+        return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
+    }
 
     /// <summary>What reading garbage can throw: running off the end, a bad string length, a repeated key.</summary>
     public static bool IsDamage(Exception e) =>

@@ -18,6 +18,7 @@ public sealed class Q2Bsp
     private const int LumpEntities = 0;
     private const int LumpPlanes = 1;
     private const int LumpVertices = 2;
+    private const int LumpVisibility = 3;
     private const int LumpNodes = 4;
     private const int LumpTexInfo = 5;
     private const int LumpFaces = 6;
@@ -44,6 +45,9 @@ public sealed class Q2Bsp
     public required BspBrush[] Brushes { get; init; }
     public required BspBrushSide[] BrushSides { get; init; }
     public required List<BspEntity> Entities { get; init; }
+
+    /// <summary>The visibility lump as it is in the file, empty if the map has none. See <see cref="MapVisibility"/>.</summary>
+    public byte[] Visibility { get; init; } = [];
 
     public static Q2Bsp Load(string path) => Read(File.ReadAllBytes(path));
 
@@ -77,6 +81,7 @@ public sealed class Q2Bsp
             Brushes = Lump<BspBrush>(data, LumpBrushes),
             BrushSides = Lump<BspBrushSide>(data, LumpBrushSides),
             Entities = BspEntity.Parse(Encoding.Latin1.GetString(LumpBytes(data, LumpEntities))),
+            Visibility = LumpBytes(data, LumpVisibility).ToArray(),
         };
     }
 

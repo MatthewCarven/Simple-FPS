@@ -19,6 +19,7 @@ instead of snagging on them, and every shot and blast shoves you about.
 | Hop landing | Turning on landing costs speed. Gentle curves stay fast, hard corners slow you down. |
 | Pushes | Every explosion shoves you. Gunfire pushes both shooter and target a little, so your own gun steers you mid-hop. |
 | Map objects | Agreed 2026-11-25. Teleporters keep your speed, turned to face the exit, where the original stopped you dead. Jumping off a moving lift or train keeps its speed, so lift launches and train surfing are tricks. Teleporters get our own glowing pad, since the original's model isn't ours. Sounds come in with map objects instead of waiting for guns. |
+| Sounds | Agreed 2026-11-25 (4a). Looping sounds fade as in the original, full volume within 80 units and silent by about 413, whatever the map's keys say, since that's what the maps' authors heard. One-off sounds follow the map's attenuation and volume. Both are cut off as in the original: loops by the map's visibility data from around your eye and a 400-unit limit, one-offs by what can be heard from their spot. |
 | Server movement | Agreed 2026-11-08. Each server owns its movement settings, and only its host (or admins they name) can change them. A change is announced to everyone at once and takes effect at the next round. The announcement carries a picture the game draws itself: a jump run with the old numbers and the new, both arcs drawn, plus the old and new values. Servers with changed movement get a badge and a one-line summary, like "low gravity, fast run", in the server list. |
 | Lighting | Cheap. Each map's own baked light, plus small moving lights on energy rounds, muzzle flashes and explosions. |
 | Textures | Maps keep their look. High-res swapped in where names match, otherwise the original or a stand-in. A per-map file can override any of it. A switch flips between high-res and the originals (2026-11-24). Original textures stay smooth, as now, not pixelated. Skies are each map's own, and a high-res sky only swaps in if it's the original redrawn (2026-11-24). |
@@ -41,7 +42,8 @@ instead of snagging on them, and every shot and blast shoves you about.
 - 25 maps have an `.override` file holding a replacement entity list. The bake should honour these.
   (Found at 3a: 13 replace a present map's entities. The other 12 name another map's `.bsp` and have
   none of their own, so `q2dm1-nade` plays `q2dm1.bsp` with its own items, under its own name.)
-- Player models are MD2. Sounds are WAV.
+- Player models are MD2. Sounds are WAV: 2,877 files, 2,860 of them 8- or 16-bit mono PCM (found at 4a).
+  The maps name 244 of them, and 16 of those are missing.
 - Textures are WAL. Of the 4,527 names the maps use, 4,174 are at their exact path and 4,318 turn up
   by bare name. 330 of the 363 maps have every texture at its exact path.
 - The high-res pack is `content/q2textures-master/pak99_textures/textures`, laid out with the same
@@ -106,6 +108,8 @@ beside them lists each map's title, author and which map it's a copy of. The map
 doesn't wait for bakes: it reads every map's title straight from the map in about 0.2 s, and hides
 copies (keeping the shortest name) and maps without deathmatch spawns. Built at 3b: textures and skies
 bake to `cache/textures` and `cache/skies`, one file per name, decoded and mipmapped, keyed the same way.
+Built at 4a: sounds bake to `cache/sounds`, one file per sound as 16-bit mono, keyed the same way, and map
+bakes carry the map's visibility data, which decides which sounds you can hear.
 
 ## Milestones
 

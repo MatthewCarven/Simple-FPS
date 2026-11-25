@@ -10,6 +10,7 @@ using SimpleFps.Core.Bake;
 using SimpleFps.Core.Bsp;
 using SimpleFps.Core.Collision;
 using SimpleFps.Core.Movement;
+using SimpleFps.Core.Sounds;
 using SimpleFps.Game.Player;
 using SimpleFps.Game.Ui;
 using SimpleFps.Game.World;
@@ -57,6 +58,7 @@ public partial class Main : Node
 
     private MapView? _view;
     private WorldTextures? _textures;
+    private WorldSounds? _sounds;
     private LocalPlayer? _player;
     private BakedMap? _map;
     private SysVector3 _spawn;
@@ -138,7 +140,7 @@ public partial class Main : Node
                 FlipTextures(save: false);
             }
 
-            GD.Print(error is null && RunSmokeTest() ? "smoke test ok" : "smoke test failed");
+            GD.Print(error is null && RunSmokeTest() && CheckSounds() ? "smoke test ok" : "smoke test failed");
             GetTree().Quit(error is null ? 0 : 1);
             return;
         }
@@ -362,6 +364,9 @@ public partial class Main : Node
             AddChild(_player);
             float pitch = float.TryParse(Flag(OS.GetCmdlineUserArgs(), "--pitch="), NumberStyles.Float, CultureInfo.InvariantCulture, out float wanted) ? wanted : 0f;
             _player.Begin(sim, spawn, yaw, pitch);
+            var speakers = TargetSpeakers.Start(map.Entities, sim.Sounds);
+            _sounds = WorldSounds.Build(_content, _cacheFolder, map, sim.Sounds, speakers.Select(s => s.Sound));
+            AddChild(_sounds);
 
             _map = map;
             _spawn = spawn;
@@ -383,6 +388,12 @@ public partial class Main : Node
                 GD.Print($"  {problem}");
             }
 
+            GD.Print($"  sounds: {speakers.Count} speakers, {sim.Sounds.Loops.Count(l => l.On)} of {sim.Sounds.Loops.Count} loops on, {_sounds.AskedCount} sounds, {_sounds.BakedCount} baked, {_sounds.Refused.Count} refused, {_sounds.LoadTime.TotalMilliseconds:F0} ms");
+            foreach (string problem in _sounds.Refused.Concat(_sounds.Problems))
+            {
+                GD.Print($"  sound refused: {problem}");
+            }
+
             return null;
         }
         catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
@@ -397,6 +408,8 @@ public partial class Main : Node
     {
         _view?.QueueFree();
         _player?.QueueFree();
+        _sounds?.QueueFree();
+        _sounds = null;
         _view = null;
         _textures = null;
         _player = null;
@@ -462,6 +475,14 @@ public partial class Main : Node
         PlayerState s = sim.Players[0];
         GD.Print($"after {SmokeTestTicks} ticks of hopping: speed {s.FlatSpeed:F0}, at {s.Position}");
         return s.FlatSpeed > 1f;
+    }
+
+    /// <summary>Listens from the spawn, and plays one sound through the simulation's events, which needs no window or speakers.</summary>
+    private bool CheckSounds()
+    {
+        (bool ok, string report) = _sounds!.Check(_spawn + (SysVector3.UnitZ * (PlayerHull.SpawnLift + PlayerHull.StandingEye)));
+        GD.Print(report);
+        return ok;
     }
 
     /// <summary>The smoke test the long way round: pick from the list, Esc menu, Map list, pick again.</summary>

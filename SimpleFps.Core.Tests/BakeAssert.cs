@@ -50,6 +50,12 @@ internal static class BakeAssert
         }
     }
 
+    public static void SameVisibility(MapVisibility expected, MapVisibility actual)
+    {
+        Assert.Equal(expected.ClusterCount, actual.ClusterCount);
+        SameBytes<byte>(expected.Lump, actual.Lump, "visibility");
+    }
+
     /// <summary>Two collision worlds give exactly the same answer to the same trace.</summary>
     public static void SameTrace(TraceResult expected, TraceResult actual, string where)
     {

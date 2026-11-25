@@ -20,8 +20,9 @@ public static class BakeFile
     /// <summary>
     /// Bump this whenever what a bake holds or how it's built changes, and every map re-bakes.
     /// 2 (3b): sky surfaces are meshed, so they can be drawn.
+    /// 3 (4a): the map's visibility data, for letting sounds through.
     /// </summary>
-    public const int Version = 2;
+    public const int Version = 3;
 
     private static readonly byte[] Magic = "SFBM"u8.ToArray();
 
@@ -30,6 +31,7 @@ public static class BakeFile
     private static readonly uint GeometryTag = Tag("GEOM");
     private static readonly uint LightTag = Tag("LMAP");
     private static readonly uint CollisionTag = Tag("COLL");
+    private static readonly uint VisibilityTag = Tag("VIS ");
 
     public static void Write(Stream stream, BakedMap map)
     {
@@ -97,6 +99,8 @@ public static class BakeFile
             WriteArray<BspModel>(w, c.Models);
         });
 
+        Section(w, VisibilityTag, () => WriteArray<byte>(w, map.Visibility.Lump));
+
         Section(w, EndTag, () => { });
     }
 
@@ -120,6 +124,7 @@ public static class BakeFile
             List<IReadOnlyList<MeshBatch>>? models = null;
             LightmapAtlas? atlas = null;
             CollisionData? collision = null;
+            MapVisibility? visibility = null;
 
             while (true)
             {
@@ -149,6 +154,10 @@ public static class BakeFile
                 {
                     collision = ReadCollision(r);
                 }
+                else if (tag == VisibilityTag)
+                {
+                    visibility = MapVisibility.Read(ReadArray<byte>(r));
+                }
 
                 EndSection(r, end);
             }
@@ -159,6 +168,7 @@ public static class BakeFile
                 Entities = entities ?? throw Missing("ENTS"),
                 Geometry = new MapGeometry(models ?? throw Missing("GEOM"), atlas ?? throw Missing("LMAP")),
                 Collision = collision ?? throw Missing("COLL"),
+                Visibility = visibility ?? throw Missing("VIS"),
             };
         }
         catch (Exception e) when (IsDamage(e))

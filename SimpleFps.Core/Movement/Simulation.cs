@@ -1,5 +1,6 @@
 using System.Numerics;
 using SimpleFps.Core.Collision;
+using SimpleFps.Core.Sounds;
 
 namespace SimpleFps.Core.Movement;
 
@@ -14,6 +15,9 @@ public sealed class Simulation(ICollisionWorld world, MoveSettings settings)
     private readonly List<PlayerState> _players = [];
 
     public MoveSettings Settings { get; } = settings;
+
+    /// <summary>What the simulation wants heard: one-off sounds for the game to take, and loops.</summary>
+    public SoundEvents Sounds { get; } = new();
 
     public IReadOnlyList<PlayerState> Players => _players;
 

@@ -28,6 +28,7 @@ public static class MapBaker
             Entities = entities,
             Geometry = MapMesher.Build(map),
             Collision = CollisionData.From(map),
+            Visibility = MapVisibility.Read(map.Visibility),
         };
     }
 

@@ -289,6 +289,7 @@ public class WholeCollectionTests(ITestOutputHelper output)
                 BakeAssert.SameGeometry(MapMesher.Build(bsp), read.Geometry);
                 BakeAssert.SameCollision(CollisionData.From(bsp), read.Collision);
                 BakeAssert.SameEntities(entities, read.Entities);
+                BakeAssert.SameVisibility(MapVisibility.Read(bsp.Visibility), read.Visibility);
 
                 var direct = new BspCollision(bsp);
                 var fromBake = new BspCollision(read.Collision);

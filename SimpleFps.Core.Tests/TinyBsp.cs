@@ -25,7 +25,8 @@ internal static class TinyBsp
         int lightOffset = 0,
         string entities = """{ "classname" "worldspawn" }""",
         Vector3[]? outline = null,
-        bool solidBox = false)
+        bool solidBox = false,
+        byte[]? visibility = null)
     {
         var lumps = new byte[LumpCount][];
         for (int i = 0; i < LumpCount; i++)
@@ -34,6 +35,7 @@ internal static class TinyBsp
         }
 
         lumps[0] = Encoding.Latin1.GetBytes(entities);
+        lumps[3] = visibility ?? [];
 
         // One plane: facing up, through the origin.
         lumps[1] = Bytes(w =>

@@ -18,4 +18,7 @@ public sealed class BakedMap
 
     public required MapGeometry Geometry { get; init; }
     public required CollisionData Collision { get; init; }
+
+    /// <summary>Which clusters can see and hear which, for letting sounds through. Leaves' clusters are in <see cref="Collision"/>.</summary>
+    public required MapVisibility Visibility { get; init; }
 }

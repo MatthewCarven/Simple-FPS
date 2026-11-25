@@ -346,20 +346,7 @@ public sealed class TextureCache(string contentFolder, string cacheFolder)
         return _palette.Value;
     }
 
-    /// <summary>SHA-256 of each part with its length in front, so where one file ends and the next starts is part of the key.</summary>
-    internal static string Hash(IEnumerable<byte[]> parts)
-    {
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        Span<byte> length = stackalloc byte[sizeof(long)];
-        foreach (byte[] part in parts)
-        {
-            BitConverter.TryWriteBytes(length, (long)part.Length);
-            hash.AppendData(length);
-            hash.AppendData(part);
-        }
-
-        return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
-    }
+    private static string Hash(IEnumerable<byte[]> parts) => BakeSections.Hash(parts);
 
     /// <summary>
     /// Where a bake goes. A name that can't safely be a path, such as one with <c>..</c> in it, is

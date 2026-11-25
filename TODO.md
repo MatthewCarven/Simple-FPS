@@ -53,10 +53,13 @@ triggers 92 (`trigger_multiple`) and 39 (`trigger_once`), trains 53, spinning th
 zones 40, relays 24, hurt zones 23, `func_wall` 65, ambient sound spots (`target_speaker`) 191.
 
 4a, sounds:
-- [ ] Bake WAV sounds to our own format in `cache/sounds`, keyed like maps and textures.
-- [ ] Play sounds placed in the world, fading with distance as the map's `attenuation` says.
-- [ ] The maps' ambient sound spots (`target_speaker`): looping ones play from the start, triggered ones
-      wait for 4b's triggers.
+- [x] Bake WAV sounds to our own format in `cache/sounds`, keyed like maps and textures. Done 2026-11-25:
+      16-bit mono, read by our own reader.
+- [x] Play sounds placed in the world, fading with distance as the map's `attenuation` says. Done: loops
+      fade like the original's, whatever the keys say, and one-offs follow the keys. Both are cut off by the
+      map's visibility data, as in the original (Matthew, both).
+- [x] The maps' ambient sound spots (`target_speaker`): looping ones play from the start, triggered ones
+      wait for 4b's triggers. Done, and Matthew heard them on `redpen`.
 
 4b, triggers and teleporters:
 - [ ] The map object system in the simulation: names and targets, touch triggers (`trigger_multiple`,
@@ -65,6 +68,9 @@ zones 40, relays 24, hurt zones 23, `func_wall` 65, ambient sound spots (`target
       (Matthew). Our own glowing pad with a soft light (Matthew).
 - [ ] Push zones (`trigger_push`), keeping the map's speed and direction.
 - [ ] Hurt zones (`trigger_hurt`) found and marked, ready for damage in milestone 5.
+- [ ] Triggered speakers: call `TargetSpeakers.Use` when a trigger fires one. Ask Matthew first: the
+      original loops a one-off sound for ever if its file has a cue point (34 of the 244 sounds the maps
+      name), where ours play once.
 
 4c, moving things (after 4a and 4b):
 - [ ] Doors (`func_door`, `func_door_rotating`, `func_door_secret`), lifts (`func_plat`), trains
@@ -74,6 +80,8 @@ zones 40, relays 24, hurt zones 23, `func_wall` 65, ambient sound spots (`target
       until damage exists.
 - [ ] Jumping off a moving lift or train keeps its speed (Matthew).
 - [ ] Their sounds, from 4a.
+- [ ] Closed doors cut sounds off, as in the original (the map's areas and area portals). Until then every
+      area counts as joined.
 
 ## Milestone 5
 - [ ] The map objects that need damage: buttons you shoot (`health` key), `func_explosive`, crushing
@@ -91,6 +99,8 @@ zones 40, relays 24, hurt zones 23, `func_wall` 65, ambient sound spots (`target
 - [ ] Mark servers with changed movement in the server list: a badge and a one-line summary.
 
 ## Later
+- [ ] A volume setting in the options menu. Fixed at 0.7, the original's default, in `WorldSounds.cs`.
+- [ ] 16 sounds the maps name are missing from `content/sound` (WORKLOG, 4a).
 - [ ] An options menu with invert Y (Matthew plays inverted) and mouse speed. These belong to each
       player, so they stay out of `MoveSettings`, which the server will own. Mouse speed is fixed at
       0.1 degrees a pixel in `LocalPlayer.cs` until then.

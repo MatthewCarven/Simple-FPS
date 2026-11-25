@@ -35,8 +35,23 @@ public class BakeTests
         BakeAssert.SameGeometry(MapMesher.Build(bsp), read.Geometry);
         BakeAssert.SameCollision(CollisionData.From(bsp), read.Collision);
         BakeAssert.SameEntities(bsp.Entities, read.Entities);
+        BakeAssert.SameVisibility(MapVisibility.None, read.Visibility);
         Assert.NotEmpty(read.Collision.Nodes);
         Assert.NotEmpty(read.Collision.Brushes);
+    }
+
+    [Fact]
+    public void TheMapsVisibilityIsBakedAsItIs()
+    {
+        byte[] lump = HearingTests.VisLump(3, (a, b) => a != 2 || b == 2, (a, b) => true);
+        BakedMap baked = MapBaker.Bake("tiny", "tiny", TinyBsp.Build(entities: Worldspawn, solidBox: true, visibility: lump), null);
+
+        BakedMap read = Read(Write(baked), baked.Info.Hash)!;
+
+        Assert.Equal(lump, read.Visibility.Lump);
+        Assert.Equal(3, read.Visibility.ClusterCount);
+        Assert.True(read.Visibility.CanSee(0, 2));
+        Assert.False(read.Visibility.CanSee(2, 0));
     }
 
     [Fact]
