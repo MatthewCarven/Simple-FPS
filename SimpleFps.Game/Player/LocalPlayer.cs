@@ -126,6 +126,8 @@ public partial class LocalPlayer : Node
 
         if (_after.Teleports != _before.Teleports)
         {
+            GD.Print($"teleported: speed {_before.FlatSpeed:F0} going in, {_after.FlatSpeed:F0} coming out, facing {_after.TeleportYaw:F0}, at {_after.Position}");
+
             // The view jumps rather than sliding there, and turns to face the exit, levelled.
             _before = _after;
             _yaw = _after.TeleportYaw;
@@ -144,6 +146,11 @@ public partial class LocalPlayer : Node
 
         foreach (MapEvent e in _sim.Objects.Events)
         {
+            if (e.Kind == MapEventKind.Pushed && e.Player == PlayerIndex)
+            {
+                GD.Print($"pushed: velocity {_after.Velocity} from {_after.Position}");
+            }
+
             MapEventHappened?.Invoke(e);
         }
     }
