@@ -367,6 +367,44 @@ public class MapObjectTests
     }
 
     [Fact]
+    public void AZoneThatPushedYouKeepsHoldWhileYouStayInIt()
+    {
+        MapObjects map = Spawn("""{ "classname" "trigger_push" "model" "*1" "angle" "90" "speed" "30" }""", Cube(new Vector3(0, 0, 200), 64));
+        PlayerState s = PlayerState.At(new Vector3(0, 0, 200)) with { Velocity = new Vector3(0, 0, 400) };
+
+        Touch(map, ref s);
+        Assert.Equal(new Vector3(0, 300, 0), s.Velocity, new Vector3Within(0.01f));
+
+        // Falling a little on the next tick, as gravity has its way, it carries on carrying.
+        map.Advance();
+        s.Velocity = new Vector3(0, 300, -13);
+        Touch(map, ref s);
+        Assert.Equal(new Vector3(0, 300, 0), s.Velocity, new Vector3Within(0.01f));
+
+        // Once out of it, the hold is gone: falling back in two ticks later isn't caught.
+        map.Advance();
+        map.Advance();
+        s.Velocity = new Vector3(0, 0, -100);
+        Touch(map, ref s);
+        Assert.Equal(new Vector3(0, 0, -100), s.Velocity);
+    }
+
+    [Fact]
+    public void ZonesTouchedTogetherAreJudgedOnHowYouArrived()
+    {
+        // The sideways zone comes first and flattens your climb; the pad after it still sees you rising.
+        MapObjects map = Spawn("""
+            { "classname" "trigger_push" "model" "*1" "angle" "90" "speed" "30" }
+            { "classname" "trigger_push" "model" "*1" "angle" "-1" "speed" "90" }
+            """, Cube(new Vector3(0, 0, 200), 64));
+        PlayerState s = PlayerState.At(new Vector3(0, 0, 200)) with { Velocity = new Vector3(0, 0, 400) };
+
+        Touch(map, ref s);
+
+        Assert.Equal(new Vector3(0, 0, 900), s.Velocity, new Vector3Within(0.01f));
+    }
+
+    [Fact]
     public void StandingOnALedgeWithYourHeadInAPushZoneDoesntPushYou()
     {
         // Like q2pduel1's: a sideways zone floats over the shaft, 40 above the ledge beside it.

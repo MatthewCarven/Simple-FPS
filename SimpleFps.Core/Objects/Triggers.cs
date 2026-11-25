@@ -45,7 +45,7 @@ public sealed class TouchTrigger : TouchObject
 
     internal override bool Touchable => IsOn;
 
-    internal override void Touch(MapObjects map, int player, ref PlayerState s, in MoveCommand cmd, MoveSettings settings)
+    internal override void Touch(MapObjects map, int player, ref PlayerState s, in PlayerState before, in MoveCommand cmd, MoveSettings settings)
     {
         if ((_flags & NotPlayer) != 0 || (_facing != Vector3.Zero && Vector3.Dot(cmd.Look, _facing) < 0))
         {

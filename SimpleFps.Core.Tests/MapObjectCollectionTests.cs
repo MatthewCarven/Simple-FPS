@@ -121,7 +121,7 @@ public class MapObjectCollectionTests(ITestOutputHelper output)
         var world = new BspCollision(bsp);
         Box[] models = bsp.Models.Select(m => new Box(m.Mins, m.Maxs)).ToArray();
 
-        (float Lowest, PlayerState End) Walk(Vector3 start, float forward, MoveSettings settings, bool crouch = false)
+        (float Lowest, PlayerState End) Walk(Vector3 start, float forward, MoveSettings settings, bool crouch = false, float yaw = 90)
         {
             MapObjects objects = MapObjects.Spawn(bsp.Entities, models, world);
             var sim = new Simulation(world, settings, objects);
@@ -129,7 +129,7 @@ public class MapObjectCollectionTests(ITestOutputHelper output)
             float lowest = float.MaxValue;
             for (int t = 0; t < 420; t++)
             {
-                sim.Tick([new MoveCommand(90, 0, t < 120 ? forward : 0, 0, Crouch: crouch && t < 120)]);
+                sim.Tick([new MoveCommand(yaw, 0, t < 120 ? forward : 0, 0, Crouch: crouch && t < 120)]);
                 lowest = MathF.Min(lowest, sim.Players[0].Position.Z);
             }
 
@@ -140,6 +140,10 @@ public class MapObjectCollectionTests(ITestOutputHelper output)
         (float walkedLowest, PlayerState walkedEnd) = Walk(ledge, 1, new MoveSettings());
         (float crouchedLowest, PlayerState crouchedEnd) = Walk(ledge, 1, new MoveSettings(), crouch: true);
         (float launchLowest, PlayerState launchEnd) = Walk(new Vector3(128, -132, 248.03125f), 0, new MoveSettings());
+
+        // Walking into the pad from the corridor, as Matthew does, touches the column, the strip
+        // beside it and the carry zone above all at once.
+        (_, PlayerState fromCorridorEnd) = Walk(new Vector3(128, 40, 248.03125f), 1, new MoveSettings(), yaw: 270);
         (float originalLowest, _) = Walk(ledge, 1, new MoveSettings { OriginalPushZones = true });
         output.WriteLine($"walked off: lowest {walkedLowest:F0}, ended at {walkedEnd.Position}; crouched off: lowest {crouchedLowest:F0}, ended at {crouchedEnd.Position}; launched: ended at {launchEnd.Position}; original rule: lowest {originalLowest:F0}");
 
@@ -147,6 +151,7 @@ public class MapObjectCollectionTests(ITestOutputHelper output)
         Assert.True(crouchedLowest < 260, "crouching off the ledge didn't get you down");
         Assert.True(crouchedEnd.Position.Z > 400 && crouchedEnd.Position.Y < -176, "the pad didn't carry you back to the ledge");
         Assert.True(launchEnd.Position.Z > 400 && launchEnd.Position.Y < -176, "the launch didn't reach the ledge");
+        Assert.True(fromCorridorEnd.Position.Z > 400 && fromCorridorEnd.Position.Y < -176, $"walking in from the corridor ended at {fromCorridorEnd.Position}, not on the ledge");
         Assert.True(originalLowest > 400, "the original rule let you off the ledge");
     }
 
@@ -189,7 +194,7 @@ public class MapObjectCollectionTests(ITestOutputHelper output)
             found.CrouchOnly.Add(where);
         }
 
-        same.Touch(fresh, 0, ref s, new MoveCommand(0, 0, 0, 0), new MoveSettings());
+        same.Touch(fresh, 0, ref s, s, new MoveCommand(0, 0, 0, 0), new MoveSettings());
         (Vector3 arrival, _) = Teleporter.Arrival(teleporter.Exit);
         Assert.True(
             s.Teleports == 1 && s.Position.X == arrival.X && s.Position.Y == arrival.Y && s.Position.Z >= arrival.Z && s.Position.Z <= arrival.Z + 32,

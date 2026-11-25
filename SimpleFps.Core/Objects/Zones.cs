@@ -43,7 +43,7 @@ public sealed class Teleporter : TouchObject
     public static (Vector3 Position, float Yaw) Arrival(MapObject exit) =>
         (EntityKeys.Origin(exit.Fields) + (Vector3.UnitZ * ExitLift), EntityKeys.Angles(exit.Fields).Y);
 
-    internal override void Touch(MapObjects map, int player, ref PlayerState s, in MoveCommand cmd, MoveSettings settings)
+    internal override void Touch(MapObjects map, int player, ref PlayerState s, in PlayerState before, in MoveCommand cmd, MoveSettings settings)
     {
         // Found afresh each time, as the original did, so a killtarget on the exit takes effect.
         if (map.FirstNamed(Target) is not { } exit)
@@ -72,12 +72,13 @@ public sealed class Teleporter : TouchObject
 /// Flag 1 makes it work once and then go.
 /// </summary>
 /// <remarks>
-/// A push zone acts on you only when you're on its own floor, or while you're moving up through
-/// it, which keeps a jump pad lifting you once it has launched you (Matthew, 2026-11-25). So you
-/// can fall through one in mid-air, land on its floor and be thrown back up, and standing on a
-/// ledge at its edge with only your head in it does nothing. On q2pduel1 that lets you walk off
-/// the upper ledge down the jump pad's shaft. The original acted on anyone touching it, and
-/// <see cref="MoveSettings.OriginalPushZones"/> brings that back.
+/// A push zone takes hold of you only when you're on its own floor, or moving up through it
+/// (Matthew, 2026-11-25), and then keeps hold while you stay in it, so a jump pad keeps lifting you
+/// and a zone at its top keeps carrying you across. So you can fall through one in mid-air, land
+/// on its floor and be thrown back up, and standing on a ledge at its edge with only your head in
+/// it does nothing. On q2pduel1 that lets you walk off the upper ledge down the jump pad's shaft.
+/// The original acted on anyone touching it, and <see cref="MoveSettings.OriginalPushZones"/>
+/// brings that back.
 /// </remarks>
 public sealed class PushZone : TouchObject
 {
@@ -94,6 +95,9 @@ public sealed class PushZone : TouchObject
     private const float DefaultSpeed = 1000f;
     private const float SpeedScale = 10f;
     private const int OnceFlag = 1;
+
+    /// <summary>The tick this zone last pushed each player.</summary>
+    private readonly Dictionary<int, long> _heldAt = [];
 
     internal PushZone(int entity, BspEntity fields, Box volume)
         : base(entity, fields, volume)
@@ -122,10 +126,13 @@ public sealed class PushZone : TouchObject
     /// </summary>
     public float? Floor { get; internal set; }
 
-    /// <summary>Whether this zone pushes this player: on its own floor, or moving up through it.</summary>
-    public bool Acts(in PlayerState s, MoveSettings settings)
+    /// <summary>
+    /// Whether this zone takes hold of this player: on its own floor, or moving up through it. One
+    /// it's already holding, having pushed them on the last tick, it keeps pushing.
+    /// </summary>
+    public bool Acts(in PlayerState s, MoveSettings settings, bool holding = false)
     {
-        if (settings.OriginalPushZones)
+        if (settings.OriginalPushZones || holding)
         {
             return true;
         }
@@ -140,13 +147,16 @@ public sealed class PushZone : TouchObject
         return Floor is { } floor ? feet <= floor + settings.StepHeight : feet >= Volume.Min.Z - settings.StepHeight;
     }
 
-    internal override void Touch(MapObjects map, int player, ref PlayerState s, in MoveCommand cmd, MoveSettings settings)
+    internal override void Touch(MapObjects map, int player, ref PlayerState s, in PlayerState before, in MoveCommand cmd, MoveSettings settings)
     {
-        if (!Acts(s, settings))
+        // Judged on how they arrived, so zones touched together don't depend on which is checked first.
+        bool holding = _heldAt.TryGetValue(player, out long at) && at == map.Ticks - 1;
+        if (!Acts(before, settings, holding))
         {
             return;
         }
 
+        _heldAt[player] = map.Ticks;
         s.Velocity = Velocity;
         map.PushedNow(Entity, player);
         if (Once)

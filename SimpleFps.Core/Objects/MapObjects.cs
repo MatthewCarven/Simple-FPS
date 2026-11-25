@@ -210,11 +210,12 @@ public sealed class MapObjects
         }
 
         int teleports = s.Teleports;
+        PlayerState before = s;
         foreach (TouchObject o in _touching)
         {
             if (!o.Removed && o.Touchable)
             {
-                o.Touch(this, player, ref s, cmd, settings ?? DefaultSettings);
+                o.Touch(this, player, ref s, before, cmd, settings ?? DefaultSettings);
 
                 // The rest were found where the player was, not where they are now.
                 if (s.Teleports != teleports)
